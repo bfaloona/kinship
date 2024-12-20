@@ -1,0 +1,12 @@
+archive
+data
+output
+venv
+.DS_Store
+.idea/
+__pycache__/
+.pytest_cache
+.ruff_cache
+.run
+.coverage
+pytestdebug.log
