@@ -1,11 +1,12 @@
 import pytest
-from main import GedcomParser, Individual
+from kinship.parser import Parser
+from kinship.individual import Individual
 from unittest.mock import MagicMock
 
 
 @pytest.fixture
 def mock_parser():
-    return GedcomParser("mock_file.ged")
+    return Parser("mock_file.ged")
 
 
 def test_parse_family(mock_parser):

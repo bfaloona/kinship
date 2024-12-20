@@ -1,4 +1,4 @@
-from main import GedcomParser
+from kinship.parser import Parser
 from unittest.mock import patch, mock_open
 
 
@@ -8,7 +8,7 @@ def test_full_parse():
     )
 
     with patch("builtins.open", mock_open(read_data=mock_gedcom_content)):
-        parser = GedcomParser("tests/mock_file.ged")
+        parser = Parser("tests/mock_file.ged")
         parser.parse()
 
         assert "I1" in parser.individuals

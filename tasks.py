@@ -8,10 +8,9 @@ def lint(c):
 
 @task
 def cov(c):
-        c.run(f"pytest --cov=main tests/")
+        c.run("pytest --cov=kinship tests/")
 
 
-@task(cov)
 @task(lint)
 def test(c):
     c.run("pytest --rich --strict-config")
