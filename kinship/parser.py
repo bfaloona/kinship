@@ -2,7 +2,9 @@ import os
 import csv
 import datetime
 from typing import Dict, List
+from itertools import combinations
 from ged4py.parser import GedcomReader
+
 from .individual import Individual
 from .family import Family
 from .child import Child
@@ -194,3 +196,87 @@ class Parser:
             writer.writeheader()
             for row in lineage:
                 writer.writerow(row)
+
+
+    def write_network_graph(self):
+        """
+        Generate a CSV representing the family tree network graph data,
+        including step-parent relationships.
+
+        """
+        # Ensure parser has parsed the data
+        if not self.individuals or not self.families:
+            raise ValueError("Parser has not loaded individuals or families. Ensure parse() is called.")
+
+        filename = os.path.join(
+            "output",
+            f"network_graph_{self.base_gedcom_filename}_{datetime.datetime.now():%Y%b%d}.csv",
+        )
+        with open(filename, "w", newline="", encoding="utf-8") as csvfile:
+            fieldnames = ["Source", "Target", "Relationship"]
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+
+            # Add parent-child relationships
+            for family in self.families.values():
+                for child in family.children:
+                    if family.husband_id != "Unknown":
+                        writer.writerow({
+                            "Source": family.husband_id,
+                            "Target": child.id,
+                            "Relationship": "parent-child"
+                        })
+                    if family.wife_id != "Unknown":
+                        writer.writerow({
+                            "Source": family.wife_id,
+                            "Target": child.id,
+                            "Relationship": "parent-child"
+                        })
+
+            # Add spousal relationships
+            for family in self.families.values():
+                if family.husband_id != "Unknown" and family.wife_id != "Unknown":
+                    writer.writerow({
+                        "Source": family.husband_id,
+                        "Target": family.wife_id,
+                        "Relationship": "spouse"
+                    })
+                    writer.writerow({
+                        "Source": family.wife_id,
+                        "Target": family.husband_id,
+                        "Relationship": "spouse"
+                    })
+
+            # Add sibling relationships
+            for family in self.families.values():
+                child_ids = [child.id for child in family.children]
+                sibling_pairs = combinations(child_ids, 2)
+                for sibling1, sibling2 in sibling_pairs:
+                    writer.writerow({
+                        "Source": sibling1,
+                        "Target": sibling2,
+                        "Relationship": "sibling"
+                    })
+                    writer.writerow({
+                        "Source": sibling2,
+                        "Target": sibling1,
+                        "Relationship": "sibling"
+                    })
+
+            # Add step-parent relationships
+            for family in self.families.values():
+                for child in family.children:
+                    biological_parents = self.child_to_biological_parents.get(child.id, [])
+                    # Check for step-parent relationships
+                    if family.husband_id not in biological_parents and family.husband_id != "Unknown":
+                        writer.writerow({
+                            "Source": family.husband_id,
+                            "Target": child.id,
+                            "Relationship": "step-parent"
+                        })
+                    if family.wife_id not in biological_parents and family.wife_id != "Unknown":
+                        writer.writerow({
+                            "Source": family.wife_id,
+                            "Target": child.id,
+                            "Relationship": "step-parent"
+                        })

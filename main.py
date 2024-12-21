@@ -19,6 +19,7 @@ if __name__ == "__main__":
         parser.write_individuals()
         parser.write_families()
         parser.write_lineage_map()
+        parser.write_network_graph()
         print("Parsing and CSV generation completed successfully!")
     except FileNotFoundError:
         print(f"Error: File '{gedcom_file_path}' not found. Please check the path and try again.")

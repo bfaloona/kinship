@@ -8,7 +8,7 @@ def lint(c):
 
 @task
 def cov(c):
-        c.run("pytest --cov=kinship tests/")
+    c.run("cd tests && pytest --cov=kinship .")
 
 
 @task(lint)
