@@ -362,6 +362,18 @@
 1 NAME  /Unknown/
 2 SURN Unknown
 1 SEX F
+0 @I999@ INDI
+1 NAME Anne /New/
+1 SEX F
+1 BIRT
+2 DATE ABT 1580
+2 PLAC Stratford-upon-Avon, Warwickshire, England
+0 @I9998@ INDI
+1 NAME Edward /Shakespeare/
+1 SEX M
+1 BIRT
+2 DATE ABT 1605
+2 PLAC Stratford-upon-Avon, Warwickshire, England
 1 FAMS @F003@
 0 @F001@ FAM
 1 HUSB @I0003@
@@ -432,10 +444,9 @@
 2 PLAC Unmarried
 1 CHIL @I0030@
 0 @F012@ FAM
-1 HUSB @I0003@
-1 WIFE @I0004@
-1 CHIL @I0001@
+1 HUSB @I0001@
+1 WIFE @I9999@
+1 CHIL @I9998@
 1 MARR
 2 PLAC Unmarried
-1 CHIL @I0030@
 0 TRLR
