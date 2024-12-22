@@ -26,6 +26,7 @@
 2 PLAC Stratford-upon-Avon
 1 FAMC @F001@
 1 FAMS @F002@
+1 FAMS @F012@
 0 @I0002@ INDI
 1 NAME Mary /Arden/
 2 GIVN Mary
@@ -368,13 +369,14 @@
 1 BIRT
 2 DATE ABT 1580
 2 PLAC Stratford-upon-Avon, Warwickshire, England
+1 FAMS @F012@
 0 @I9998@ INDI
 1 NAME Edward /Shakespeare/
 1 SEX M
 1 BIRT
 2 DATE ABT 1605
 2 PLAC Stratford-upon-Avon, Warwickshire, England
-1 FAMS @F003@
+1 FAMC @F012@
 0 @F001@ FAM
 1 HUSB @I0003@
 1 WIFE @I0002@
