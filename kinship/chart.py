@@ -6,7 +6,6 @@ def draw_family_tree(parser):
     # Get data from parser
     network_graph = parser.get_network_graph()
     individuals = parser.get_individuals()
-    # families = parser.get_families()
 
     # Create the graph
     G = nx.DiGraph()
@@ -28,6 +27,16 @@ def draw_family_tree(parser):
     # Hierarchical layout for nodes
     pos = nx.drawing.nx_agraph.graphviz_layout(G, prog='dot')
     adjusted_pos = pos.copy()
+
+    # Adjust sibling positions to be horizontal
+    for u, v in sibling_edges:
+        if u in adjusted_pos and v in adjusted_pos:
+            adjusted_pos[v] = (adjusted_pos[u][0] + 1, adjusted_pos[u][1])
+
+    # Adjust spouse positions to be horizontal
+    for husband, wife in spouse_edges:
+        if husband in adjusted_pos and wife in adjusted_pos:
+            adjusted_pos[wife] = (adjusted_pos[husband][0] + 1, adjusted_pos[husband][1])
 
     # Draw sibling relationships (light gray dashed lines)
     for u, v in sibling_edges:
