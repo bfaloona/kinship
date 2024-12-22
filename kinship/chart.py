@@ -1,5 +1,4 @@
-import pandas as pd
-import networkx as nx
+import pygraphviz as pgv
 import matplotlib.pyplot as plt
 
 def draw_family_tree(parser):
@@ -7,74 +6,49 @@ def draw_family_tree(parser):
     network_graph = parser.get_network_graph()
     individuals = parser.get_individuals()
 
-    # Create the graph
-    G = nx.DiGraph()
+    # Create the PyGraphviz graph
+    G = pgv.AGraph(directed=True)
+    G.graph_attr.update(
+        size="15,10!",
+        splines="line",  # Straight edges for clarity
+        overlap="prism",
+        rankdir="TB",  # Top-to-bottom layout
+        ranksep="4.0",
+        nodesep="2.5",
+        dpi="150",
+        page="8.5,11",  # Fit within printable page dimensions
+        ratio="compress"
+    )
 
     # Add individuals as nodes
     for ind_id, ind_data in individuals.items():
-        G.add_node(ind_id, label=f"{ind_data.full_name}\n{ind_id}")
-
-    sibling_edges = []
-    spouse_edges = []
-    # Add relationships from network graph
-    for relationship in network_graph:
-        G.add_edge(relationship['Source'], relationship['Target'], relationship=relationship['Relationship'])
-        if relationship['Relationship'] == 'sibling':
-            sibling_edges.append([relationship['Source'], relationship['Target']])
-        if relationship['Relationship'] == 'spouse':
-            spouse_edges.append([relationship['Source'], relationship['Target']])
-
-    # Hierarchical layout for nodes
-    pos = nx.drawing.nx_agraph.graphviz_layout(G, prog='dot')
-    adjusted_pos = pos.copy()
-
-    # Adjust sibling positions to be horizontal
-    for u, v in sibling_edges:
-        if u in adjusted_pos and v in adjusted_pos:
-            adjusted_pos[v] = (adjusted_pos[u][0] + 1, adjusted_pos[u][1])
-
-    # Adjust spouse positions to be horizontal
-    for husband, wife in spouse_edges:
-        if husband in adjusted_pos and wife in adjusted_pos:
-            adjusted_pos[wife] = (adjusted_pos[husband][0] + 1, adjusted_pos[husband][1])
-
-    # Draw sibling relationships (light gray dashed lines)
-    for u, v in sibling_edges:
-        if u in adjusted_pos and v in adjusted_pos:
-            x_coords = [adjusted_pos[u][0], adjusted_pos[v][0]]
-            y_coords = [adjusted_pos[u][1], adjusted_pos[v][1]]
-            plt.plot(x_coords, y_coords, color="lightgray", linestyle="dashed", linewidth=1)
-
-    # Draw spouse relationships (black solid lines)
-    for husband, wife in spouse_edges:
-        if husband in adjusted_pos and wife in adjusted_pos:
-            x_coords = [adjusted_pos[husband][0], adjusted_pos[wife][0]]
-            y_coords = [adjusted_pos[husband][1], adjusted_pos[wife][1]]
-            plt.plot(x_coords, y_coords, color="black", linewidth=1.5)
-
-    # Draw parent and step-parent edges
-    for u, v, data in G.edges(data=True):
-        x_coords = [adjusted_pos[u][0], adjusted_pos[v][0]]
-        y_coords = [adjusted_pos[u][1], adjusted_pos[v][1]]
-        if data["relationship"] == "parent":
-            plt.plot(x_coords, y_coords, color="blue", linestyle="solid", linewidth=1.5)  # Parent
-        elif data["relationship"] == "step-parent":
-            plt.plot(x_coords, y_coords, color="blue", linestyle="dashed", linewidth=1.2)  # Step-parent
-
-    # Draw the main graph
-    nx.draw(
-        G, adjusted_pos, with_labels=False, node_size=3000, node_color='lightblue'
-    )
-
-    # Add labels for nodes with adjusted positions
-    for node, (x, y) in adjusted_pos.items():
-        if G.nodes[node] and G.nodes[node]['label']:
-            label = f"{G.nodes[node]['label'].split()[0]} {G.nodes[node]['label'].split()[-1][0]}. ({node})" or f"Unknown ({node})"
-        else:
-            label = f"Unknown ({node})"
-        plt.text(
-            x, y, label, fontsize=8, horizontalalignment='center', verticalalignment='center', rotation=30
+        G.add_node(
+            ind_id,
+            label=f"{ind_data.full_name}\n({ind_id})",
+            shape="ellipse",
+            style="filled",
+            fillcolor="lightblue",
+            fontname="Arial Bold",
+            fontsize="14",
+            margin="0.5,0.5"
         )
 
-    plt.title("Family Tree Visualization")
+    # Add relationships from network graph
+    for relationship in network_graph:
+        G.add_edge(
+            relationship["Source"],
+            relationship["Target"],
+            label=relationship["Relationship"],
+            fontsize="10"
+        )
+
+    # Use circular layout for better edge routing
+    G.layout(prog="circo")
+    G.draw("family_tree_final.png", format="png")
+
+    # Display using matplotlib
+    plt.figure(figsize=(25, 20))
+    plt.imshow(plt.imread("family_tree_final.png"))
+    plt.axis("off")
+    plt.title("Final Family Tree Visualization", fontsize=20, fontweight="bold")
     plt.show()
