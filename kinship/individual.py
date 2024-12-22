@@ -6,3 +6,6 @@ class Individual:
         self.birth_place = birth_place
         self.death_date = death_date
         self.death_place = death_place
+
+    def __str__(self):
+        return f"{self.full_name} ({self.id})"

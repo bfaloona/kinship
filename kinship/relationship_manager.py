@@ -1,5 +1,8 @@
 from typing import Tuple, Final, Any
 
+from kinship.individual import Individual
+from kinship.family import Family
+
 
 class RelationshipManager:
     def __init__(self, parser):
@@ -72,6 +75,10 @@ class RelationshipManager:
             descendents.update(next_generation)
             current_generation = next_generation
         return descendents
+
+    def get_family(self, family_id) -> Family:
+        """Retrieve the family details for a given family ID."""
+        return self._families.get(family_id)
 
     def describe_relationship(self, person1_id, person2_id):
         """Describe the relationship of person1 to person2."""
@@ -146,3 +153,43 @@ class RelationshipManager:
                 longest_chain = chain
 
         return longest_chain
+
+    def display(self, content) -> str:
+        """Pretty Print content depending on the type"""
+        result = content
+        if content is None:
+            result = "None"
+
+        elif isinstance(content, list):
+            if not content:
+                result = "list[]"
+            elif isinstance(content[0], Individual) or \
+                    isinstance(content[0], family.Family):
+                result = "\n".join([self.display(ind) for ind in content])
+
+        elif isinstance(content, set):
+            if not content:
+                result = "set()"
+            else:
+                result = "\n".join([self.display(item) for item in content])
+
+        elif isinstance(content, dict):
+            if not content:
+                result = "dict{}"
+            else:
+                result = "\n".join([f"{k}: {self.display(v)}" for k, v in content.items()])
+
+        elif isinstance(content, str):
+            if content in self._individuals:
+                result = self.display(self._individuals[content])
+            else:
+                result = content
+
+        elif isinstance(content, Individual):
+            result = f"{content.full_name} ({content.id})"
+
+        elif isinstance(content, Family):
+            fam = content
+            result = f"Family: {fam.id}\n{self.display(fam.husband_id)} + {self.display(fam.wife_id)} M:{fam.marr_date}\n{self.display(fam.children)}\n"
+
+        return result

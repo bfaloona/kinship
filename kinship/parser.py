@@ -7,7 +7,6 @@ from ged4py.parser import GedcomReader
 
 from .individual import Individual
 from .family import Family
-from .child import Child
 from .util import normalize_id
 
 
@@ -52,7 +51,7 @@ class Parser:
         wife = family.sub_tag("WIFE")
         children_records = family.sub_tags("CHIL")
         marr_date = family.sub_tag_value("MARR/DATE")  # Ensure it's a single value
-        children = [Child(child.xref_id, child.name) for child in children_records]
+        children = [self.individuals[normalize_id(child.xref_id)] for child in children_records]
         if husband and normalize_id(husband.xref_id) not in self.individuals:
             print(
                 f"Warning: Husband ID {husband.xref_id} not found in individuals list."
@@ -64,8 +63,7 @@ class Parser:
             husband if husband else None,
             wife if wife else None,
             marr_date if marr_date else None,
-            children,
-            []
+            children
         )
         self.families[fam.id] = fam
         return fam
@@ -167,7 +165,7 @@ class Parser:
                 lineage.append(
                     {
                         "Individual_ID": child.id,
-                        "Individual_Name": child.name if child.name else "Unknown",
+                        "Individual_Name": child.full_name if child.full_name else "Unknown",
                         "Father_ID": fam.husband_id,
                         "Father_Name": fam.husband_name if fam.husband_name else "Unknown",
                         "Mother_ID": fam.wife_id,

@@ -1,7 +1,9 @@
 import sys
 import os
+
+import kinship.relationship_manager
 from kinship.parser import Parser
-from kinship import chart
+from kinship import chart, util
 from kinship.relationship_manager import RelationshipManager
 
 if __name__ == "__main__":
@@ -25,10 +27,17 @@ if __name__ == "__main__":
         print("Parsing and CSV generation completed successfully!")
 
         rm = RelationshipManager(parser)
-        print("Ancestors of I0001:")
-        print(rm.get_ancestors("I0001", depth=4))
-        print("Descendents of I0001:")
-        print(rm.get_descendents("I0001", depth=4))
+        id = "I1028899526"
+        fam_id = "F12"
+        print(f"Ancestors of {rm.display(id)}:")
+        print(rm.display(rm.get_ancestors(id, depth=4)))
+        print(f"Descendents of {rm.display(id)}:")
+        print(rm.display(rm.get_descendents(id, depth=4)))
+        print(f"Parents of {rm.display(id)}:")
+        print(rm.display(rm.get_parents(id)))
+        print(f"Family ({rm.display(fam_id)}) of {rm.display(id)}:")
+        print(rm.display(rm.get_family(fam_id)))
+
         # chart.draw_family_tree(rm)
         # print("Family tree chart generated successfully!")
 

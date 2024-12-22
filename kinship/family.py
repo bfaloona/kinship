@@ -1,6 +1,6 @@
 from typing import List
-from .child import Child
 from .util import normalize_id, date_string
+from .individual import Individual
 
 class Family:
     def __init__(
@@ -9,8 +9,7 @@ class Family:
         husband=None,
         wife=None,
         marr_date: str = None,
-        children: List[Child] = None,
-        step_children: List[Child] = None,
+        children: List[Individual] = None,
     ):
         self.id = normalize_id(xref_id)
         self.husband_name = husband.name.format() if husband else "Unknown"
@@ -19,3 +18,6 @@ class Family:
         self.wife_id = normalize_id(wife.xref_id) if wife else "Unknown"
         self.marr_date = date_string(marr_date)
         self.children = children if children else []
+
+    def __str__(self):
+        return f"Family: {self.id}\n{self.husband_name} ({self.husband_id}) + {self.wife_name} ({self.wife_id}) m{self.marr_date}\n{self.children}\n"
