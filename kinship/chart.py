@@ -6,46 +6,51 @@ def draw_family_tree(parser):
     # Get data from parser
     network_graph = parser.get_network_graph()
     individuals = parser.get_individuals()
-    families = parser.get_families()
+    # families = parser.get_families()
 
     # Create the graph
     G = nx.DiGraph()
 
     # Add individuals as nodes
     for ind_id, ind_data in individuals.items():
-        G.add_node(ind_id, label=ind_data.full_name)
+        G.add_node(ind_id, label=f"{ind_data.full_name}\n{ind_id}")
 
+    sibling_edges = []
+    spouse_edges = []
     # Add relationships from network graph
     for relationship in network_graph:
         G.add_edge(relationship['Source'], relationship['Target'], relationship=relationship['Relationship'])
+        if relationship['Relationship'] == 'sibling':
+            sibling_edges.append([relationship['Source'], relationship['Target']])
+        if relationship['Relationship'] == 'spouse':
+            spouse_edges.append([relationship['Source'], relationship['Target']])
 
     # Hierarchical layout for nodes
     pos = nx.drawing.nx_agraph.graphviz_layout(G, prog='dot')
     adjusted_pos = pos.copy()
 
-    # Adjust spouse nodes dynamically to make room
-    spouse_edges = [(family.husband_id, family.wife_id) for family in families.values() if family.husband_id and family.wife_id]
+    # Draw sibling relationships (light gray dashed lines)
+    for u, v in sibling_edges:
+        if u in adjusted_pos and v in adjusted_pos:
+            x_coords = [adjusted_pos[u][0], adjusted_pos[v][0]]
+            y_coords = [adjusted_pos[u][1], adjusted_pos[v][1]]
+            plt.plot(x_coords, y_coords, color="lightgray", linestyle="dashed", linewidth=1)
+
+    # Draw spouse relationships (black solid lines)
     for husband, wife in spouse_edges:
         if husband in adjusted_pos and wife in adjusted_pos:
-            if adjusted_pos[husband][1] == adjusted_pos[wife][1]:  # Same y-coordinate
-                adjusted_pos[wife] = (adjusted_pos[wife][0], adjusted_pos[wife][1] - 25)  # Move spouse node down
+            x_coords = [adjusted_pos[husband][0], adjusted_pos[wife][0]]
+            y_coords = [adjusted_pos[husband][1], adjusted_pos[wife][1]]
+            plt.plot(x_coords, y_coords, color="black", linewidth=1.5)
 
-    # Draw the family tree
-    plt.figure(figsize=(18, 12))
-    ax = plt.gca()
-
-    # Draw relationships
+    # Draw parent and step-parent edges
     for u, v, data in G.edges(data=True):
         x_coords = [adjusted_pos[u][0], adjusted_pos[v][0]]
         y_coords = [adjusted_pos[u][1], adjusted_pos[v][1]]
-        if data["relationship"] == "parent-child":
-            plt.plot(x_coords, y_coords, color="blue", linestyle="solid", linewidth=1.2)  # Parent (solid blue)
+        if data["relationship"] == "parent":
+            plt.plot(x_coords, y_coords, color="blue", linestyle="solid", linewidth=1.5)  # Parent
         elif data["relationship"] == "step-parent":
-            plt.plot(x_coords, y_coords, color="red", linestyle="dashed", linewidth=1.5)  # Step-parent (dashed red)
-        elif data["relationship"] == "sibling":
-            plt.plot(x_coords, y_coords, color="lightgray", linestyle="dashed", linewidth=1)  # Sibling (dashed light gray)
-        elif data["relationship"] == "spouse":
-            plt.plot(x_coords, y_coords, color="black", linewidth=1.5)  # Spouse (solid black)
+            plt.plot(x_coords, y_coords, color="blue", linestyle="dashed", linewidth=1.2)  # Step-parent
 
     # Draw the main graph
     nx.draw(
