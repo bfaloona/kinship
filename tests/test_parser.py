@@ -27,7 +27,9 @@ def test_parse_family(mock_parser):
 
     mock_parser.individuals = {
         "I1": Individual("I1", "John Doe", "1970-01-01", "New York", None, None),
-        "I2": Individual("I2", "Jane Doe", "1975-01-01", "Los Angeles", None, None),
+        "I2": Individual("I2", "Jane Doe", "1975-02-01", "Los Angeles", None, None),
+        "I3": Individual("I3", "Jean Doe", "2005-03-01", "Los Angeles", None, None),
+        "I4": Individual("I4", "Jay Doe", "2007-04-01", "Los Angeles", None, None)
     }
 
     family = mock_parser.parse_family(mock_family)

@@ -1,5 +1,4 @@
 import pygraphviz as pgv
-import matplotlib.pyplot as plt
 from .relationship_manager import RelationshipManager
 
 def draw_family_tree(rm: RelationshipManager):
@@ -64,7 +63,7 @@ def draw_family_tree(rm: RelationshipManager):
 
     # Isolate unrelated individuals
     for ind_id in individuals.keys():
-        if not is_connected(ind_id, network_graph):
+        if not rm.is_connected(ind_id):
             G.add_node(ind_id, group="isolated")
 
     # Use hierarchical layout

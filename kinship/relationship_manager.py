@@ -1,4 +1,5 @@
-from typing import Tuple, Final, Any
+from typing import Final
+from collections import defaultdict
 
 from kinship.individual import Individual
 from kinship.family import Family
@@ -96,21 +97,17 @@ class RelationshipManager:
             return "spouse"
         return "unknown relationship"
 
-    @staticmethod
-    def calculate_generation(ind_id, network_graph):
+
+    def calculate_generation(self, ind_id):
         """Logic to determine generation based on parent-child relationships"""
         pass
 
-    # Helper function: Check if a node is connected
-    def is_connected(ind_id, network_graph):
-        return any(rel["Source"] == ind_id or rel["Target"] == ind_id for rel in network_graph)
+    def is_connected(self, ind_id):
+        return any(rel["Source"] == ind_id or rel["Target"] == ind_id for rel in self._relationships)
 
-    # Helper function: Check if a node is the oldest ancestor
-    def is_oldest_ancestor(ind_id):
-        # Logic to identify oldest ancestor
-        pass
+    def is_oldest_ancestor(self, ind_id):
+        return len(self.get_ancestors(ind_id)) == 0
 
-    from collections import defaultdict
 
     def build_relationship_graph(self, relationship_type) -> dict:
         """
@@ -123,7 +120,8 @@ class RelationshipManager:
                 graph[rel['target_id']].append(rel['source_id'])  # Assuming undirected relationships
         return graph
 
-    def dfs_longest_chain(self, graph, node, visited):
+    @staticmethod
+    def dfs_longest_chain(graph, node, visited):
         """
         Perform DFS to find the longest chain starting from the given node.
         """
@@ -131,7 +129,7 @@ class RelationshipManager:
         max_chain = [node]
         for neighbor in graph[node]:
             if neighbor not in visited:
-                chain = dfs_longest_chain(graph, neighbor, visited)
+                chain = RelationshipManager.dfs_longest_chain(graph, neighbor, visited)
                 if len(chain) > len(max_chain):
                     max_chain = chain
         visited.remove(node)
@@ -142,13 +140,13 @@ class RelationshipManager:
         Find the longest chain of IDs for the specified relationship type.
         """
         # Build the graph
-        graph = build_relationship_graph(relationships, relationship_type)
+        graph = self.build_relationship_graph(self._relationships, relationship_type)
 
         # Find the longest chain by exploring all nodes
         longest_chain = []
         visited = set()
         for node in graph:
-            chain = dfs_longest_chain(graph, node, visited)
+            chain = self.dfs_longest_chain(graph, node, visited)
             if len(chain) > len(longest_chain):
                 longest_chain = chain
 
@@ -164,7 +162,7 @@ class RelationshipManager:
             if not content:
                 result = "list[]"
             elif isinstance(content[0], Individual) or \
-                    isinstance(content[0], family.Family):
+                    isinstance(content[0], Family):
                 result = "\n".join([self.display(ind) for ind in content])
 
         elif isinstance(content, set):
