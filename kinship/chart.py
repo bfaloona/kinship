@@ -1,27 +1,33 @@
 import pygraphviz as pgv
 import matplotlib.pyplot as plt
+from .relationship_manager import RelationshipManager
 
-def draw_family_tree(parser):
+def draw_family_tree(rm: RelationshipManager):
     # Get data from parser
-    network_graph = parser.get_network_graph()
-    individuals = parser.get_individuals()
+    network_graph = rm._parser.get_relationships()
+    individuals = rm._parser.get_individuals()
+
+    # Determine generations based on relationships
+    generations = {}  # Maps individual ID to generation level
+    for ind_id in individuals.keys():
+        generations[ind_id] = rm.calculate_generation(ind_id, network_graph)
 
     # Create the PyGraphviz graph
     G = pgv.AGraph(directed=True)
     G.graph_attr.update(
-        size="15,10!",
-        splines="line",  # Straight edges for clarity
+        size="20,15!",
+        splines="polyline",
         overlap="prism",
-        rankdir="TB",  # Top-to-bottom layout
-        ranksep="4.0",
-        nodesep="2.5",
-        dpi="150",
-        page="8.5,11",  # Fit within printable page dimensions
-        ratio="compress"
+        rankdir="TB",
+        dpi="150"
     )
+
+    sibling_edges = []
+    spouse_edges = []
 
     # Add individuals as nodes
     for ind_id, ind_data in individuals.items():
+        generation = generations[ind_id]
         G.add_node(
             ind_id,
             label=f"{ind_data.full_name}\n({ind_id})",
@@ -30,10 +36,12 @@ def draw_family_tree(parser):
             fillcolor="lightblue",
             fontname="Arial Bold",
             fontsize="14",
-            margin="0.5,0.5"
+            margin="0.3,0.3"
         )
+        # Assign ranks based on generation
+        G.node_attr[ind_id]["rank"] = f"{generation}"
 
-    # Add relationships from network graph
+    # Add relationships and group siblings, spouses
     for relationship in network_graph:
         G.add_edge(
             relationship["Source"],
@@ -41,14 +49,32 @@ def draw_family_tree(parser):
             label=relationship["Relationship"],
             fontsize="10"
         )
+        if relationship["Relationship"] == "sibling":
+            sibling_edges.append([relationship["Source"], relationship["Target"]])
+        elif relationship["Relationship"] == "spouse":
+            spouse_edges.append([relationship["Source"], relationship["Target"]])
 
-    # Use circular layout for better edge routing
-    G.layout(prog="circo")
-    G.draw("family_tree_final.png", format="png")
+    # Group siblings horizontally within a generation
+    for sibling1, sibling2 in sibling_edges:
+        G.add_edge(sibling1, sibling2, style="dotted", color="gray", constraint="false")
+
+    # Place spouses near each other
+    for husband, wife in spouse_edges:
+        G.add_edge(husband, wife, style="dashed", color="black", constraint="false")
+
+    # Isolate unrelated individuals
+    for ind_id in individuals.keys():
+        if not is_connected(ind_id, network_graph):
+            G.add_node(ind_id, group="isolated")
+
+    # Use hierarchical layout
+    G.layout(prog="dot")
+    G.draw("family_tree_generations.png", format="png")
 
     # Display using matplotlib
-    plt.figure(figsize=(25, 20))
-    plt.imshow(plt.imread("family_tree_final.png"))
-    plt.axis("off")
-    plt.title("Final Family Tree Visualization", fontsize=20, fontweight="bold")
-    plt.show()
+    # plt.figure(figsize=(25, 20))
+    # plt.imshow(plt.imread("family_tree_generations.png"))
+    # plt.axis("off")
+    # plt.title("Family Tree by Generations", fontsize=20, fontweight="bold")
+    # plt.show()
+

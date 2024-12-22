@@ -17,7 +17,8 @@ class Parser:
         self.base_gedcom_filename = os.path.splitext(os.path.basename(file_path))[0]
         self.individuals: Dict[str, Individual] = {}
         self.families: Dict[str, Family] = {}
-        self.child_to_biological_parents: Dict[str, Set[str]] = {}
+        self.relationships = []
+        self.child_to_parents: Dict[str, Set[str]] = {}
         self.parent_to_children: Dict[str, Set[str]] = {}
         self.parent_to_step_children: Dict[str, Set[str]] = {}
 
@@ -28,7 +29,7 @@ class Parser:
             for family in ged_parser.records0("FAM"):
                 fam = self.parse_family(family)
                 for child in self.families[fam.id].children:
-                    self.child_to_biological_parents[child.id] = {fam.husband_id, fam.wife_id}
+                    self.child_to_parents[child.id] = {fam.husband_id, fam.wife_id}
         self.create_parent_to_children()
         self.create_parent_to_step_children()
 
@@ -192,26 +193,27 @@ class Parser:
             for row in lineage:
                 writer.writerow(row)
 
-    def get_network_graph(self):
+    def get_relationships(self):
         """
         Generate and return the network graph as a list of dictionaries without saving to disk.
         """
+        if len(self.relationships) > 0:
+            return self.relationships
+
         if not self.individuals or not self.families:
             raise ValueError("Parser has not loaded individuals or families. Ensure parse() is called.")
-
-        network_map = []
 
         # Add parent-child relationships
         for family in self.families.values():
             for child in family.children:
                 if family.husband_id != "Unknown":
-                    network_map.append({
+                    self.relationships.append({
                         "Source": family.husband_id,
                         "Target": child.id,
                         "Relationship": "parent-child"
                     })
                 if family.wife_id != "Unknown":
-                    network_map.append({
+                    self.relationships.append({
                         "Source": family.wife_id,
                         "Target": child.id,
                         "Relationship": "parent-child"
@@ -220,12 +222,12 @@ class Parser:
         # Add spousal relationships
         for family in self.families.values():
             if family.husband_name != "Unknown" and family.wife_name != "Unknown":
-                network_map.append({
+                self.relationships.append({
                     "Source": family.husband_id,
                     "Target": family.wife_id,
                     "Relationship": "spouse"
                 })
-                network_map.append({
+                self.relationships.append({
                     "Source": family.wife_id,
                     "Target": family.husband_id,
                     "Relationship": "spouse"
@@ -236,12 +238,12 @@ class Parser:
             child_ids = [child.id for child in family.children]
             sibling_pairs = combinations(child_ids, 2)
             for sibling1, sibling2 in sibling_pairs:
-                network_map.append({
+                self.relationships.append({
                     "Source": sibling1,
                     "Target": sibling2,
                     "Relationship": "sibling"
                 })
-                network_map.append({
+                self.relationships.append({
                     "Source": sibling2,
                     "Target": sibling1,
                     "Relationship": "sibling"
@@ -256,30 +258,30 @@ class Parser:
         for spouse_id in all_spouses:
             if spouse_id in self.parent_to_step_children:
                 for child_id in self.parent_to_step_children[spouse_id]:
-                    network_map.append({
+                    self.relationships.append({
                         "Source": spouse_id,
                         "Target": child_id,
                         "Relationship": "step-parent"
                     })
 
-        return network_map
+        return self.relationships
 
-    def write_network_graph(self, network_map=None):
+    def write_relationships(self, relationships=None):
         """
         Generate a CSV representing the family tree network graph data,
         including step-parent relationships. Optionally accepts a precomputed
-        network map from get_network_graph().
+        network map from get_relationships().
         """
         # Ensure parser has parsed the data
         if not self.individuals or not self.families:
             raise ValueError("Parser has not loaded individuals or families. Ensure parse() is called.")
 
-        if network_map is None:
-            network_map = self.get_network_graph()
+        if relationships is None:
+            relationships = self.get_relationships()
 
         filename = os.path.join(
             "output",
-            f"network_graph_{self.base_gedcom_filename}_{datetime.datetime.now():%Y%b%d}.csv",
+            f"relationships_{self.base_gedcom_filename}_{datetime.datetime.now():%Y%b%d}.csv",
         )
 
         with open(filename, "w", newline="", encoding="utf-8") as csvfile:
@@ -287,7 +289,7 @@ class Parser:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
 
-            for entry in network_map:
+            for entry in relationships:
                 writer.writerow(entry)
 
     def get_individuals(self):
