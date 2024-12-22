@@ -3,42 +3,28 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 def draw_family_tree(parser):
-    # Load the data
-    individuals = pd.read_csv(individuals_file)
-    families = pd.read_csv(families_file)
-    lineage_map = pd.read_csv(lineage_map_file)
+    # Get data from parser
+    network_graph = parser.get_network_graph()
+    individuals = parser.get_individuals()
+    families = parser.get_families()
 
     # Create the graph
     G = nx.DiGraph()
 
     # Add individuals as nodes
-    for _, row in individuals.iterrows():
-        G.add_node(row['Individual_ID'], label=row['Individual_Name'])
+    for ind_id, ind_data in individuals.items():
+        G.add_node(ind_id, label=ind_data.full_name)
 
-    # Add parent-child relationships
-    for _, row in lineage_map.iterrows():
-        if pd.notna(row['Father_ID']):
-            G.add_edge(row['Father_ID'], row['Individual_ID'], relationship='parent')
-        if pd.notna(row['Mother_ID']):
-            G.add_edge(row['Mother_ID'], row['Individual_ID'], relationship='parent')
-
-    # Add sibling relationships
-    sibling_edges = []
-    for _, row in lineage_map.iterrows():
-        siblings = lineage_map[lineage_map['Father_ID'] == row['Father_ID']]['Individual_ID'].tolist()
-        siblings += lineage_map[lineage_map['Mother_ID'] == row['Mother_ID']]['Individual_ID'].tolist()
-        siblings = list(set(siblings) - {row['Individual_ID']})
-        for sibling in siblings:
-            sibling_edges.append((row['Individual_ID'], sibling))
-
-    # Add spouse relationships
-    spouse_edges = [(row['Husband_ID'], row['Wife_ID']) for _, row in families.iterrows() if pd.notna(row['Husband_ID']) and pd.notna(row['Wife_ID'])]
+    # Add relationships from network graph
+    for relationship in network_graph:
+        G.add_edge(relationship['Source'], relationship['Target'], relationship=relationship['Relationship'])
 
     # Hierarchical layout for nodes
     pos = nx.drawing.nx_agraph.graphviz_layout(G, prog='dot')
     adjusted_pos = pos.copy()
 
     # Adjust spouse nodes dynamically to make room
+    spouse_edges = [(family.husband_id, family.wife_id) for family in families.values() if family.husband_id and family.wife_id]
     for husband, wife in spouse_edges:
         if husband in adjusted_pos and wife in adjusted_pos:
             if adjusted_pos[husband][1] == adjusted_pos[wife][1]:  # Same y-coordinate
@@ -48,28 +34,18 @@ def draw_family_tree(parser):
     plt.figure(figsize=(18, 12))
     ax = plt.gca()
 
-    # Draw sibling relationships (light gray dashed lines)
-    for u, v in sibling_edges:
-        if u in adjusted_pos and v in adjusted_pos:
-            x_coords = [adjusted_pos[u][0], adjusted_pos[v][0]]
-            y_coords = [adjusted_pos[u][1], adjusted_pos[v][1]]
-            plt.plot(x_coords, y_coords, color="lightgray", linestyle="dashed", linewidth=1)
-
-    # Draw spouse relationships (black solid lines)
-    for husband, wife in spouse_edges:
-        if husband in adjusted_pos and wife in adjusted_pos:
-            x_coords = [adjusted_pos[husband][0], adjusted_pos[wife][0]]
-            y_coords = [adjusted_pos[husband][1], adjusted_pos[wife][1]]
-            plt.plot(x_coords, y_coords, color="black", linewidth=1.5)
-
-    # Draw parent and step-parent edges
+    # Draw relationships
     for u, v, data in G.edges(data=True):
         x_coords = [adjusted_pos[u][0], adjusted_pos[v][0]]
         y_coords = [adjusted_pos[u][1], adjusted_pos[v][1]]
-        if data["relationship"] == "parent":
+        if data["relationship"] == "parent-child":
             plt.plot(x_coords, y_coords, color="blue", linestyle="solid", linewidth=1.2)  # Parent (solid blue)
         elif data["relationship"] == "step-parent":
             plt.plot(x_coords, y_coords, color="red", linestyle="dashed", linewidth=1.5)  # Step-parent (dashed red)
+        elif data["relationship"] == "sibling":
+            plt.plot(x_coords, y_coords, color="lightgray", linestyle="dashed", linewidth=1)  # Sibling (dashed light gray)
+        elif data["relationship"] == "spouse":
+            plt.plot(x_coords, y_coords, color="black", linewidth=1.5)  # Spouse (solid black)
 
     # Draw the main graph
     nx.draw(

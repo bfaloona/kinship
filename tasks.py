@@ -8,12 +8,12 @@ def lint(c):
 
 @task
 def cov(c):
-    c.run("cd tests && pytest --cov=kinship .")
+    c.run("pytest --cov=kinship .")
 
 
 @task(lint)
 def test(c):
-    c.run("pytest --rich --strict-config")
+    c.run("pytest --strict-config")
 
 
 @task
@@ -23,7 +23,7 @@ def parse(c, path):
 
 @task
 def venv(c):
-    c.run("python3.9 -m venv venv")
+    c.run("python3.13 -m venv venv")
     print("Now run 'source venv/bin/activate' to activate the virtual environment.")
 
 

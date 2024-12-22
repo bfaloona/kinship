@@ -19,4 +19,3 @@ class Family:
         self.wife_id = normalize_id(wife.xref_id) if wife else "Unknown"
         self.marr_date = date_string(marr_date)
         self.children = children if children else []
-        self.step_children = step_children if step_children else []

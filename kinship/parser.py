@@ -1,7 +1,7 @@
 import os
 import csv
 import datetime
-from typing import Dict, List
+from typing import Dict, Set
 from itertools import combinations
 from ged4py.parser import GedcomReader
 
@@ -17,7 +17,9 @@ class Parser:
         self.base_gedcom_filename = os.path.splitext(os.path.basename(file_path))[0]
         self.individuals: Dict[str, Individual] = {}
         self.families: Dict[str, Family] = {}
-        self.child_to_biological_parents: Dict[str, List[str]] = {}
+        self.child_to_biological_parents: Dict[str, Set[str]] = {}
+        self.parent_to_children: Dict[str, Set[str]] = {}
+        self.parent_to_step_children: Dict[str, Set[str]] = {}
 
     def parse(self):
         with GedcomReader(self.file_path) as ged_parser:
@@ -26,11 +28,9 @@ class Parser:
             for family in ged_parser.records0("FAM"):
                 fam = self.parse_family(family)
                 for child in self.families[fam.id].children:
-                    self.child_to_biological_parents[child.id] = [
-                        fam.husband_id,
-                        fam.wife_id,
-                    ]
-        self.add_step_children()
+                    self.child_to_biological_parents[child.id] = {fam.husband_id, fam.wife_id}
+        self.create_parent_to_children()
+        self.create_parent_to_step_children()
 
     def parse_individual(self, individual):
         try:
@@ -69,36 +69,34 @@ class Parser:
         self.families[fam.id] = fam
         return fam
 
-    def add_step_children(self):
-        # Step 1: Create a global mapping of parent → children
-        parent_to_children = {}
+    def create_parent_to_children(self):
         for family in self.families.values():
             for parent_id in [family.husband_id, family.wife_id]:
-                if parent_id not in parent_to_children:
-                    parent_to_children[parent_id] = set()
+                if parent_id not in self.parent_to_children:
+                    self.parent_to_children[parent_id] = set()
                 for child in family.children:
-                    parent_to_children[parent_id].add(child.id)
+                    self.parent_to_children[parent_id].add(child.id)
 
-        # Step 2: Compare children across families to identify step-children
+    def create_parent_to_step_children(self):
+        """Compare children across families to identify step-children"""
         for family in self.families.values():
-            biological_children = set(child.id for child in family.children)
-            step_children = set()
+            family_biological_children = set(child.id for child in family.children)
 
-            for parent_id in [family.husband_id, family.wife_id]:
-                for other_family_id, other_family in self.families.items():
-                    if other_family_id != family.id:
-                        # Add step-children if they are not biological children
-                        for child in other_family.children:
-                            if (
-                                child.id not in biological_children
-                                and child.id in parent_to_children.get(parent_id, set())
-                            ):
-                                step_children.add(child)
+            # husband: add wife's other children
+            for child_id in self.parent_to_children.get(family.wife_id, set()):
+                if child_id not in family_biological_children:
+                    self.add_step_child_to_parent(child_id, family.husband_id)
 
-            # Append unique step-children to the family
-            for step_child in step_children:
-                if step_child not in family.step_children:
-                    family.step_children.append(step_child)
+            # wife: add husband's other children
+            for child_id in self.parent_to_children.get(family.husband_id, set()):
+                if child_id not in family_biological_children:
+                    self.add_step_child_to_parent(child_id, family.wife_id)
+
+    def add_step_child_to_parent(self, child_id, parent_id):
+        if parent_id not in self.parent_to_step_children:
+            self.parent_to_step_children[parent_id] = set()
+        self.parent_to_step_children[parent_id].add(child_id)
+
     def write_individuals(self):
         os.makedirs("output", exist_ok=True)
         filename = os.path.join(
@@ -142,15 +140,13 @@ class Parser:
                 "Wife_ID",
                 "Wife_Name",
                 "Marriage_Date",
-                "Child_ID",
-                "Step_Child_ID",
+                "Child_ID"
             ]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
 
             for family in self.families.values():
-                max_length = max(len(family.children), len(family.step_children))
-                for i in range(max_length):
+                for i in range(len(family.children)):
                     row = {
                         "Family_ID": family.id,
                         "Husband_ID": family.husband_id,
@@ -158,8 +154,7 @@ class Parser:
                         "Wife_ID": family.wife_id,
                         "Wife_Name": family.wife_name,
                         "Marriage_Date": family.marr_date,
-                        "Child_ID": family.children[i].id if i < len(family.children) else "",
-                        "Step_Child_ID": family.step_children[i].id if i < len(family.step_children) else "",
+                        "Child_ID": family.children[i].id if i < len(family.children) else ""
                     }
                     writer.writerow(row)
 
@@ -197,86 +192,106 @@ class Parser:
             for row in lineage:
                 writer.writerow(row)
 
+    def get_network_graph(self):
+        """
+        Generate and return the network graph as a list of dictionaries without saving to disk.
+        """
+        if not self.individuals or not self.families:
+            raise ValueError("Parser has not loaded individuals or families. Ensure parse() is called.")
 
-    def write_network_graph(self):
+        network_map = []
+
+        # Add parent-child relationships
+        for family in self.families.values():
+            for child in family.children:
+                if family.husband_id != "Unknown":
+                    network_map.append({
+                        "Source": family.husband_id,
+                        "Target": child.id,
+                        "Relationship": "parent-child"
+                    })
+                if family.wife_id != "Unknown":
+                    network_map.append({
+                        "Source": family.wife_id,
+                        "Target": child.id,
+                        "Relationship": "parent-child"
+                    })
+
+        # Add spousal relationships
+        for family in self.families.values():
+            if family.husband_name != "Unknown" and family.wife_name != "Unknown":
+                network_map.append({
+                    "Source": family.husband_id,
+                    "Target": family.wife_id,
+                    "Relationship": "spouse"
+                })
+                network_map.append({
+                    "Source": family.wife_id,
+                    "Target": family.husband_id,
+                    "Relationship": "spouse"
+                })
+
+        # Add sibling relationships
+        for family in self.families.values():
+            child_ids = [child.id for child in family.children]
+            sibling_pairs = combinations(child_ids, 2)
+            for sibling1, sibling2 in sibling_pairs:
+                network_map.append({
+                    "Source": sibling1,
+                    "Target": sibling2,
+                    "Relationship": "sibling"
+                })
+                network_map.append({
+                    "Source": sibling2,
+                    "Target": sibling1,
+                    "Relationship": "sibling"
+                })
+
+        # Add step-parent relationships
+        all_spouses = set()
+        for family in self.families.values():
+            all_spouses.add(family.husband_id)
+            all_spouses.add(family.wife_id)
+
+        for spouse_id in all_spouses:
+            if spouse_id in self.parent_to_step_children:
+                for child_id in self.parent_to_step_children[spouse_id]:
+                    network_map.append({
+                        "Source": spouse_id,
+                        "Target": child_id,
+                        "Relationship": "step-parent"
+                    })
+
+        return network_map
+
+    def write_network_graph(self, network_map=None):
         """
         Generate a CSV representing the family tree network graph data,
-        including step-parent relationships.
-
+        including step-parent relationships. Optionally accepts a precomputed
+        network map from get_network_graph().
         """
         # Ensure parser has parsed the data
         if not self.individuals or not self.families:
             raise ValueError("Parser has not loaded individuals or families. Ensure parse() is called.")
 
+        if network_map is None:
+            network_map = self.get_network_graph()
+
         filename = os.path.join(
             "output",
             f"network_graph_{self.base_gedcom_filename}_{datetime.datetime.now():%Y%b%d}.csv",
         )
+
         with open(filename, "w", newline="", encoding="utf-8") as csvfile:
             fieldnames = ["Source", "Target", "Relationship"]
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
 
-            # Add parent-child relationships
-            for family in self.families.values():
-                for child in family.children:
-                    if family.husband_id != "Unknown":
-                        writer.writerow({
-                            "Source": family.husband_id,
-                            "Target": child.id,
-                            "Relationship": "parent-child"
-                        })
-                    if family.wife_id != "Unknown":
-                        writer.writerow({
-                            "Source": family.wife_id,
-                            "Target": child.id,
-                            "Relationship": "parent-child"
-                        })
+            for entry in network_map:
+                writer.writerow(entry)
 
-            # Add spousal relationships
-            for family in self.families.values():
-                if family.husband_id != "Unknown" and family.wife_id != "Unknown":
-                    writer.writerow({
-                        "Source": family.husband_id,
-                        "Target": family.wife_id,
-                        "Relationship": "spouse"
-                    })
-                    writer.writerow({
-                        "Source": family.wife_id,
-                        "Target": family.husband_id,
-                        "Relationship": "spouse"
-                    })
+    def get_individuals(self):
+        return self.individuals
 
-            # Add sibling relationships
-            for family in self.families.values():
-                child_ids = [child.id for child in family.children]
-                sibling_pairs = combinations(child_ids, 2)
-                for sibling1, sibling2 in sibling_pairs:
-                    writer.writerow({
-                        "Source": sibling1,
-                        "Target": sibling2,
-                        "Relationship": "sibling"
-                    })
-                    writer.writerow({
-                        "Source": sibling2,
-                        "Target": sibling1,
-                        "Relationship": "sibling"
-                    })
-
-            # Add step-parent relationships
-            for family in self.families.values():
-                for child in family.children:
-                    biological_parents = self.child_to_biological_parents.get(child.id, [])
-                    # Check for step-parent relationships
-                    if family.husband_id not in biological_parents and family.husband_id != "Unknown":
-                        writer.writerow({
-                            "Source": family.husband_id,
-                            "Target": child.id,
-                            "Relationship": "step-parent"
-                        })
-                    if family.wife_id not in biological_parents and family.wife_id != "Unknown":
-                        writer.writerow({
-                            "Source": family.wife_id,
-                            "Target": child.id,
-                            "Relationship": "step-parent"
-                        })
+    def get_families(self):
+        return self.families
