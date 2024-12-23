@@ -41,22 +41,6 @@ def create_parent_to_step_children(families: dict[str, Family], parent_to_childr
 
     return parent_to_step_children
 
-# def create_parent_to_step_children(self):
-#     """Compare children across families to identify step-children"""
-#     for family in self.families.values():
-#         family_biological_children = set(child.id for child in family.children)
-#
-#         # husband: add wife's other children
-#         for child_id in self.parent_to_children.get(family.wife_id, set()):
-#             if child_id not in family_biological_children:
-#                 self.add_step_child_to_parent(child_id, family.husband_id)
-#
-#         # wife: add husband's other children
-#         for child_id in self.parent_to_children.get(family.husband_id, set()):
-#             if child_id not in family_biological_children:
-#                 self.add_step_child_to_parent(child_id, family.wife_id)
-
-
 
 class Parser:
     def __init__(self, file_path):
