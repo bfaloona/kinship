@@ -9,12 +9,12 @@ from kinship.family_tree_data import FamilyTreeData
 class RelationshipManager:
 
     def __init__(self, data: FamilyTreeData):
+        self.validate_family_tree_data()
 
         """Store data in read-only format."""
         self.individuals: Final = data.individuals
         self.families: Final = data.families
         self.relationships: Final = data.relationships
-
         self.child_to_parents = {}
         self.parent_to_children = {}
         self.parent_to_step_children = {}
@@ -27,6 +27,14 @@ class RelationshipManager:
         self.parent_to_children = create_parent_to_children(self.families)
         self.parent_to_step_children = create_parent_to_step_children(self.families, self.parent_to_children)
         self.generate_spouse_and_sibling_lookups()
+
+    def validate_family_tree_data(self):
+        # Family data validation
+        for family in self.families.values():
+            if not family.husband_id or family.husband_id == "Unknown":
+                raise ValueError (f"Invalid data: missing ID")
+            if not family.wife_id or family.wife_id == "Unknown":
+                raise ValueError (f"Invalid data: missing ID")
 
     def individual_exists(self, individual_id):
         """Check if the individual ID is valid."""
@@ -323,23 +331,24 @@ def create_parent_to_children(families: dict[str, Family]) -> dict[str, Set[str]
     return parent_to_children
 
 
-def create_parent_to_step_children(families: dict[str, Family], parent_to_children: dict[str, Set[str]]) -> dict[str, Set[str]]:
+def create_parent_to_step_children(families: dict[str, Family], parent_to_children: dict[str, Set[str]]) -> dict[
+    str, Set[str]]:
     parent_to_step_children = {}
+
     for family in families.values():
+        # Biological children in the current family
         family_biological_children = set(child.id for child in family.children)
 
-        # husband: add wife's other children
+        # Husband: Add wife's other children
         for child_id in parent_to_children.get(family.wife_id, set()):
-            if child_id not in family_biological_children:
-                if family.husband_id not in parent_to_step_children:
-                    parent_to_step_children[family.husband_id] = set()
-                parent_to_step_children[family.husband_id].add(child_id)
+            if child_id not in family_biological_children and \
+                    child_id not in parent_to_children.get(family.husband_id, set()):
+                parent_to_step_children.setdefault(family.husband_id, set()).add(child_id)
 
-        # wife: add husband's other children
+        # Wife: Add husband's other children
         for child_id in parent_to_children.get(family.husband_id, set()):
-            if child_id not in family_biological_children:
-                if family.wife_id not in parent_to_step_children:
-                    parent_to_step_children[family.wife_id] = set()
-                parent_to_step_children[family.wife_id].add(child_id)
+            if child_id not in family_biological_children and \
+                    child_id not in parent_to_children.get(family.wife_id, set()):
+                parent_to_step_children.setdefault(family.wife_id, set()).add(child_id)
 
     return parent_to_step_children
