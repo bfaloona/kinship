@@ -1,40 +1,72 @@
-from typing import Final
+from typing import Final, Set
 from collections import defaultdict
 
 from kinship.individual import Individual
 from kinship.family import Family
-from kinship.parser import create_parent_to_children, create_parent_to_step_children #noqa F401
+from kinship.family_tree_data import FamilyTreeData
 
 
 class RelationshipManager:
-    def __init__(self, individuals, families, relationships, parser=None):
+
+    def __init__(self, data: FamilyTreeData):
+
         """Store data in read-only format."""
-        self._individuals: Final = individuals
-        self._families: Final = families
-        self._relationships: Final = relationships
-        self._parser: Final = parser
+        self.individuals: Final = data.individuals
+        self.families: Final = data.families
+        self.relationships: Final = data.relationships
+
         self.child_to_parents = {}
-        for fam in self._families.values():
+        self.parent_to_children = {}
+        self.parent_to_step_children = {}
+        self.spouse_relationships = {}
+        self.sibling_relationships = {}
+
+        for fam in self.families.values():
             for child in fam.children:
                 self.child_to_parents[child.id] = {fam.husband_id, fam.wife_id}
-        self.parent_to_children = create_parent_to_children(self._families)
-        self.parent_to_step_children = create_parent_to_step_children(self._families, self.parent_to_children)
+        self.parent_to_children = create_parent_to_children(self.families)
+        self.parent_to_step_children = create_parent_to_step_children(self.families, self.parent_to_children)
+        self.generate_spouse_and_sibling_lookups()
 
     def individual_exists(self, individual_id):
         """Check if the individual ID is valid."""
-        if individual_id not in self._individuals:
+        if individual_id not in self.individuals:
             print(f"Individual ID {individual_id} not found.")
             return False
         return True
+
+    def generate_spouse_and_sibling_lookups(self):
+        """
+        Generate spouse and sibling lookups from the relationships data.
+        """
+
+        # Build spouse relationship - each spouse pair is bidirectional
+        for rel in [rel for rel in self.relationships if rel['Relationship'] == 'spouse']:
+            self.spouse_relationships[rel['Source']] = rel['Target']
+            self.spouse_relationships[rel['Target']] = rel['Source']
+
+        # Build sibling relationships - each sibling pair is bidirectional
+        for rel in [rel for rel in self.relationships if rel['Relationship'] == 'sibling']:
+            self.sibling_relationships[rel['Source']] = rel['Target']
+            self.sibling_relationships[rel['Target']] = rel['Source']
+
+    def is_spouse(self, spouse1_id: str, spouse2_id: str):
+        """Check if two individuals are spouses."""
+        return self.relationships[spouse1_id] == spouse2_id
+
+    def is_parent(self, child_id: str, parent_id: str):
+        """Check if param2 (parent) is a parent of param1 (child)."""
+        return parent_id in self.child_to_parents.get(child_id, set())
+
     # Read-only methods for querying relationships
     def parent_of_child(self, parent_id, child_id):
         """Check if an individual is a parent of another."""
-        return child_id in self._individuals[parent_id].children
+        return child_id in self.individuals[parent_id].children
 
     def are_siblings(self, individual1_id, individual2_id):
         """Check if two individuals share at least one parent."""
-        parents1 = self._individuals[individual1_id].parents
-        parents2 = self._individuals[individual2_id].parents
+        parents1 = self.individuals[individual1_id].parents
+        parents2 = self.individuals[individual2_id].parents
         return bool(set(parents1) & set(parents2))
 
     def get_ancestors(self, individual_id, depth=1) -> set:
@@ -51,13 +83,13 @@ class RelationshipManager:
             current_generation = next_generation
         return ancestors
 
-    def get_parents(self, individual_id) -> []:
+    def get_parents(self, child_id) -> []:
         """Retrieve the parents of an individual."""
         parents = []
-        if not self.individual_exists(individual_id):
+        if not self.individual_exists(child_id):
             return []
-        if individual_id in self._child_to_parents:
-            parents = self._child_to_parents[individual_id]
+        if child_id in self._child_to_parents:
+            parents = self._child_to_parents[child_id]
         return parents
 
     def get_children(self, individual_id) -> []:
@@ -81,10 +113,6 @@ class RelationshipManager:
             current_generation = next_generation
         return descendents
 
-    def get_family(self, family_id) -> Family:
-        """Retrieve the family details for a given family ID."""
-        return self._families.get(family_id)
-
     def describe_relationship(self, person1_id, person2_id):
         """Describe the relationship of person1 to person2."""
         if self.parent_of_child(person1_id, person2_id):
@@ -97,7 +125,7 @@ class RelationshipManager:
             return "grandparent"
         if person1_id in self.get_descendents(person2_id, depth=2) and person1_id not in self.get_descendents(person2_id, depth=1):
             return "grandchild"
-        if self._individuals[person1_id].spouse == person2_id:
+        if self.individuals[person1_id].spouse == person2_id:
             return "spouse"
         return "unknown relationship"
 
@@ -107,7 +135,7 @@ class RelationshipManager:
         pass
 
     def is_connected(self, ind_id):
-        return any(rel["Source"] == ind_id or rel["Target"] == ind_id for rel in self._relationships)
+        return any(rel["Source"] == ind_id or rel["Target"] == ind_id for rel in self.relationships)
 
     def is_oldest_ancestor(self, ind_id):
         return len(self.get_ancestors(ind_id)) == 0
@@ -118,10 +146,10 @@ class RelationshipManager:
         Build a graph representation for the given relationship type.
         """
         graph = defaultdict(list)
-        for rel in self._relationships:
+        for rel in self.relationships:
             if rel['relationship'] == relationship_type:
-                graph[rel['source_id']].append(rel['target_id'])
-                graph[rel['target_id']].append(rel['source_id'])  # Assuming undirected relationships
+                graph[rel['Source']].append(rel['Target'])
+                graph[rel['Target']].append(rel['Source'])  # Assuming undirected relationships
         return graph
 
     @staticmethod
@@ -144,7 +172,7 @@ class RelationshipManager:
         Find the longest chain of IDs for the specified relationship type.
         """
         # Build the graph
-        graph = self.build_relationship_graph(self._relationships, relationship_type)
+        graph = self.build_relationship_graph(self.relationships, relationship_type)
 
         # Find the longest chain by exploring all nodes
         longest_chain = []
@@ -172,7 +200,7 @@ class RelationshipManager:
                 if current in ancestors:
                     continue
                 ancestors.add(current)
-                parents = self._families.get(current, {}).get('parents', [])
+                parents = self.families.get(current, {}).get('parents', [])
                 stack.extend(parents)
             return ancestors
 
@@ -196,31 +224,52 @@ class RelationshipManager:
         most_recent_common_ancestor = min(common_ancestors, key=generational_distance)
         return most_recent_common_ancestor
 
-    def calculate_generational_distance(self, individual, ancestor):
+    def calculate_generational_distance(self, individual1, individual2):
         """
-        Calculate the number of generations between an individual and an ancestor.
-        :param individual: ID of the individual.
-        :param ancestor: ID of the ancestor.
-        :return: Number of generations or a large number if no relationship exists.
+        Calculate the generational distance between two individuals, considering relationships such as parent-child,
+        siblings, and spouses.
         """
-        queue = [(individual, 0)]  # (current_individual, generation_count)
+        from collections import deque
+
+        # Ensure both individuals exist in the data
+        if individual1 not in self.relationships or individual2 not in self.relationships:
+            return float('inf')  # No path if one or both individuals are missing
+
+        # BFS Initialization
+        queue = deque([(individual1, 0)])  # (current individual, current distance)
         visited = set()
 
         while queue:
-            current, generations = queue.pop(0)
+            current_individual, current_distance = queue.popleft()
 
-            if current == ancestor:
-                return generations
-
-            if current in visited:
+            if current_individual in visited:
                 continue
 
-            visited.add(current)
-            parents = self._families.get(current, {}).get('parents', [])
-            queue.extend((parent, generations + 1) for parent in parents)
+            visited.add(current_individual)
 
-        return float('inf')  # If no path exists to the ancestor
+            # Check if we have reached the target individual
+            if current_individual == individual2:
+                return current_distance
 
+            # Explore all relationships for the current individual
+            for relation in self.relationships.get(current_individual, []):
+                if relation not in visited:
+                    queue.append((relation, current_distance + 1))
+
+            # Include spouses in traversal (if defined separately)
+            if hasattr(self, 'spouse_relationships') and current_individual in self.spouse_relationships:
+                spouse = self.spouse_relationships[current_individual]
+                if spouse not in visited:
+                    queue.append((spouse, current_distance))  # Spouses are same generation
+
+            # Include siblings in traversal (if defined separately)
+            if hasattr(self, 'sibling_relationships') and current_individual in self.sibling_relationships:
+                siblings = self.sibling_relationships[current_individual]
+                for sibling in siblings:
+                    if sibling not in visited:
+                        queue.append((sibling, current_distance))  # Siblings are same generation
+
+        return float('inf')  # If no path is found
 
     def display(self, content) -> str:
         """Pretty Print content depending on the type"""
@@ -248,8 +297,8 @@ class RelationshipManager:
                 result = "\n".join([f"{k}: {self.display(v)}" for k, v in content.items()])
 
         elif isinstance(content, str):
-            if content in self._individuals:
-                result = self.display(self._individuals[content])
+            if content in self.individuals:
+                result = self.display(self.individuals[content])
             else:
                 result = content
 
@@ -261,3 +310,36 @@ class RelationshipManager:
             result = f"Family: {fam.id}\n{self.display(fam.husband_id)} + {self.display(fam.wife_id)} M:{fam.marr_date}\n{self.display(fam.children)}\n"
 
         return result
+
+
+def create_parent_to_children(families: dict[str, Family]) -> dict[str, Set[str]]:
+    parent_to_children = {}
+    for family in families.values():
+        for parent_id in [family.husband_id, family.wife_id]:
+            if parent_id not in parent_to_children:
+                parent_to_children[parent_id] = set()
+            for child in family.children:
+                parent_to_children[parent_id].add(child.id)
+    return parent_to_children
+
+
+def create_parent_to_step_children(families: dict[str, Family], parent_to_children: dict[str, Set[str]]) -> dict[str, Set[str]]:
+    parent_to_step_children = {}
+    for family in families.values():
+        family_biological_children = set(child.id for child in family.children)
+
+        # husband: add wife's other children
+        for child_id in parent_to_children.get(family.wife_id, set()):
+            if child_id not in family_biological_children:
+                if family.husband_id not in parent_to_step_children:
+                    parent_to_step_children[family.husband_id] = set()
+                parent_to_step_children[family.husband_id].add(child_id)
+
+        # wife: add husband's other children
+        for child_id in parent_to_children.get(family.husband_id, set()):
+            if child_id not in family_biological_children:
+                if family.wife_id not in parent_to_step_children:
+                    parent_to_step_children[family.wife_id] = set()
+                parent_to_step_children[family.wife_id].add(child_id)
+
+    return parent_to_step_children

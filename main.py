@@ -1,7 +1,8 @@
 import sys
 import os
 
-from kinship.parser import Parser
+from kinship.family_tree_data import FamilyTreeData
+from kinship.gedcom_parser import GedcomParser
 from kinship.relationship_manager import RelationshipManager
 
 if __name__ == "__main__":
@@ -16,8 +17,10 @@ if __name__ == "__main__":
         gedcom_file_path = os.path.join(sys.argv[1])
 
     try:
-        parser = Parser(gedcom_file_path)
-        parser.parse()
+        parser = GedcomParser(gedcom_file_path)
+        parser.parse_gedcom_file()
+        data = FamilyTreeData()
+        data.load_from_gedcom(parser)
         parser.write_individuals()
         parser.write_families()
         parser.write_relationships()
