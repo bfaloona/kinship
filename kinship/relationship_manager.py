@@ -3,18 +3,22 @@ from collections import defaultdict
 
 from kinship.individual import Individual
 from kinship.family import Family
+from kinship.parser import create_parent_to_children, create_parent_to_step_children #noqa F401
 
 
 class RelationshipManager:
-    def __init__(self, parser):
-        """Store data in read-only format for querying relationships."""
+    def __init__(self, individuals, families, relationships, parser=None):
+        """Store data in read-only format."""
+        self._individuals: Final = individuals
+        self._families: Final = families
+        self._relationships: Final = relationships
         self._parser: Final = parser
-        self._individuals: Final = parser.individuals
-        self._families: Final = parser.families
-        self._relationships: Final = parser.relationships
-        self._child_to_parents: Final = parser.child_to_parents
-        self._parent_to_children: Final = parser.parent_to_children
-        self._parent_to_step_children: Final = parser.parent_to_step_children
+        self.child_to_parents = {}
+        for fam in self._families.values():
+            for child in fam.children:
+                self.child_to_parents[child.id] = {fam.husband_id, fam.wife_id}
+        self.parent_to_children = create_parent_to_children(self._families)
+        self.parent_to_step_children = create_parent_to_step_children(self._families, self.parent_to_children)
 
     def individual_exists(self, individual_id):
         """Check if the individual ID is valid."""
@@ -151,6 +155,72 @@ class RelationshipManager:
                 longest_chain = chain
 
         return longest_chain
+
+    def find_common_ancestor(self, individual1, individual2):
+        """
+        Find the most recent common ancestor between two individuals.
+        :param individual1: ID of the first individual.
+        :param individual2: ID of the second individual.
+        :return: The most recent common ancestor or None if no common ancestor exists.
+        """
+        # Helper function to trace ancestors of a given individual
+        def trace_ancestors(individual):
+            ancestors = set()
+            stack = [individual]
+            while stack:
+                current = stack.pop()
+                if current in ancestors:
+                    continue
+                ancestors.add(current)
+                parents = self._families.get(current, {}).get('parents', [])
+                stack.extend(parents)
+            return ancestors
+
+        # Get ancestors for both individuals
+        ancestors1 = trace_ancestors(individual1)
+        ancestors2 = trace_ancestors(individual2)
+
+        # Find common ancestors
+        common_ancestors = ancestors1.intersection(ancestors2)
+
+        if not common_ancestors:
+            return None
+
+        # Determine the most recent common ancestor
+        def generational_distance(ancestor):
+            return max(
+                self.calculate_generational_distance(individual1, ancestor),
+                self.calculate_generational_distance(individual2, ancestor)
+            )
+
+        most_recent_common_ancestor = min(common_ancestors, key=generational_distance)
+        return most_recent_common_ancestor
+
+    def calculate_generational_distance(self, individual, ancestor):
+        """
+        Calculate the number of generations between an individual and an ancestor.
+        :param individual: ID of the individual.
+        :param ancestor: ID of the ancestor.
+        :return: Number of generations or a large number if no relationship exists.
+        """
+        queue = [(individual, 0)]  # (current_individual, generation_count)
+        visited = set()
+
+        while queue:
+            current, generations = queue.pop(0)
+
+            if current == ancestor:
+                return generations
+
+            if current in visited:
+                continue
+
+            visited.add(current)
+            parents = self._families.get(current, {}).get('parents', [])
+            queue.extend((parent, generations + 1) for parent in parents)
+
+        return float('inf')  # If no path exists to the ancestor
+
 
     def display(self, content) -> str:
         """Pretty Print content depending on the type"""

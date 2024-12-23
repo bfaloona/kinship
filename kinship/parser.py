@@ -10,6 +10,54 @@ from .family import Family
 from .util import normalize_id
 
 
+def create_parent_to_children(families: dict[str, Family]) -> dict[str, Set[str]]:
+    parent_to_children = {}
+    for family in families.values():
+        for parent_id in [family.husband_id, family.wife_id]:
+            if parent_id not in parent_to_children:
+                parent_to_children[parent_id] = set()
+            for child in family.children:
+                parent_to_children[parent_id].add(child.id)
+    return parent_to_children
+
+def create_parent_to_step_children(families: dict[str, Family], parent_to_children: dict[str, Set[str]]) -> dict[str, Set[str]]:
+    parent_to_step_children = {}
+    for family in families.values():
+        family_biological_children = set(child.id for child in family.children)
+
+        # husband: add wife's other children
+        for child_id in parent_to_children.get(family.wife_id, set()):
+            if child_id not in family_biological_children:
+                if family.husband_id not in parent_to_step_children:
+                    parent_to_step_children[family.husband_id] = set()
+                parent_to_step_children[family.husband_id].add(child_id)
+
+        # wife: add husband's other children
+        for child_id in parent_to_children.get(family.husband_id, set()):
+            if child_id not in family_biological_children:
+                if family.wife_id not in parent_to_step_children:
+                    parent_to_step_children[family.wife_id] = set()
+                parent_to_step_children[family.wife_id].add(child_id)
+
+    return parent_to_step_children
+
+# def create_parent_to_step_children(self):
+#     """Compare children across families to identify step-children"""
+#     for family in self.families.values():
+#         family_biological_children = set(child.id for child in family.children)
+#
+#         # husband: add wife's other children
+#         for child_id in self.parent_to_children.get(family.wife_id, set()):
+#             if child_id not in family_biological_children:
+#                 self.add_step_child_to_parent(child_id, family.husband_id)
+#
+#         # wife: add husband's other children
+#         for child_id in self.parent_to_children.get(family.husband_id, set()):
+#             if child_id not in family_biological_children:
+#                 self.add_step_child_to_parent(child_id, family.wife_id)
+
+
+
 class Parser:
     def __init__(self, file_path):
         self.file_path = file_path
@@ -29,8 +77,8 @@ class Parser:
                 fam = self.parse_family(family)
                 for child in self.families[fam.id].children:
                     self.child_to_parents[child.id] = {fam.husband_id, fam.wife_id}
-        self.create_parent_to_children()
-        self.create_parent_to_step_children()
+        self.parent_to_children = create_parent_to_children(self.families)
+        self.parent_to_step_children = create_parent_to_step_children(self.families, self.parent_to_children)
 
     def parse_individual(self, individual):
         try:
@@ -67,29 +115,6 @@ class Parser:
         )
         self.families[fam.id] = fam
         return fam
-
-    def create_parent_to_children(self):
-        for family in self.families.values():
-            for parent_id in [family.husband_id, family.wife_id]:
-                if parent_id not in self.parent_to_children:
-                    self.parent_to_children[parent_id] = set()
-                for child in family.children:
-                    self.parent_to_children[parent_id].add(child.id)
-
-    def create_parent_to_step_children(self):
-        """Compare children across families to identify step-children"""
-        for family in self.families.values():
-            family_biological_children = set(child.id for child in family.children)
-
-            # husband: add wife's other children
-            for child_id in self.parent_to_children.get(family.wife_id, set()):
-                if child_id not in family_biological_children:
-                    self.add_step_child_to_parent(child_id, family.husband_id)
-
-            # wife: add husband's other children
-            for child_id in self.parent_to_children.get(family.husband_id, set()):
-                if child_id not in family_biological_children:
-                    self.add_step_child_to_parent(child_id, family.wife_id)
 
     def add_step_child_to_parent(self, child_id, parent_id):
         if parent_id not in self.parent_to_step_children:
@@ -157,39 +182,6 @@ class Parser:
                     }
                     writer.writerow(row)
 
-    def write_lineage_map(self):
-        os.makedirs("output", exist_ok=True)
-        lineage = []
-        for fam_id, fam in self.families.items():
-            for child in fam.children:
-                lineage.append(
-                    {
-                        "Individual_ID": child.id,
-                        "Individual_Name": child.full_name if child.full_name else "Unknown",
-                        "Father_ID": fam.husband_id,
-                        "Father_Name": fam.husband_name if fam.husband_name else "Unknown",
-                        "Mother_ID": fam.wife_id,
-                        "Mother_Name": fam.wife_name if fam.wife_name else "Unknown",
-                    }
-                )
-
-        filename = os.path.join(
-            "output",
-            f"lineage_map_{self.base_gedcom_filename}_{datetime.datetime.now():%Y%b%d}.csv",
-        )
-        with open(filename, "w", newline="", encoding="utf-8") as csvfile:
-            fieldnames = [
-                "Individual_ID",
-                "Individual_Name",
-                "Father_ID",
-                "Father_Name",
-                "Mother_ID",
-                "Mother_Name",
-            ]
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-            for row in lineage:
-                writer.writerow(row)
 
     def get_relationships(self):
         """

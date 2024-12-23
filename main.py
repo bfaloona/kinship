@@ -20,21 +20,29 @@ if __name__ == "__main__":
         parser.parse()
         parser.write_individuals()
         parser.write_families()
-        parser.write_lineage_map()
         parser.write_relationships()
         print("Parsing and CSV generation completed successfully!")
 
-        rm = RelationshipManager(parser)
+        rm = RelationshipManager(parser.individuals,
+                                 parser.families,
+                                 parser.relationships,
+                                 parser)
         id = "I0001"
         fam_id = "F12"
-        print(f"Ancestors of {rm.display(id)}:")
+        print(f"### Ancestors of {rm.display(id)}:")
         print(rm.display(rm.get_ancestors(id, depth=4)))
-        print(f"Descendents of {rm.display(id)}:")
+        print(f"### Descendents of {rm.display(id)}:")
         print(rm.display(rm.get_descendents(id, depth=4)))
-        print(f"Parents of {rm.display(id)}:")
+        print(f"### Parents of {rm.display(id)}:")
         print(rm.display(rm.get_parents(id)))
-        print(f"Family ({rm.display(fam_id)}) of {rm.display(id)}:")
+        print(f"### Family ({rm.display(fam_id)}) of {rm.display(id)}:")
         print(rm.display(rm.get_family(fam_id)))
+        # print(f"### Spouses of ({rm.display(fam_id)}) of {rm.display(id)}:")
+        # print(rm.display(rm.get_spouses(fam_id)))
+        # print(f"### Children of ({rm.display(fam_id)}) of {rm.display(id)}:")
+        # print(rm.display(rm.get_childen(fam_id)))
+        # print(f"### Step Children of ({rm.display(fam_id)}) of {rm.display(id)}:")
+        # print(rm.display(rm.get_step_children(fam_id)))
 
         # chart.draw_family_tree(rm)
         # print("Family tree chart generated successfully!")
