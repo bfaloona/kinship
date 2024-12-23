@@ -7,7 +7,6 @@ from ged4py.parser import GedcomReader
 
 from .individual import Individual
 from .family import Family
-from .relationship_manager import create_parent_to_children, create_parent_to_step_children
 from .util import normalize_id
 
 
@@ -240,3 +239,37 @@ class GedcomParser:
 
     def get_families(self):
         return self.families
+
+
+def create_parent_to_children(families: dict[str, Family]) -> dict[str, Set[str]]:
+    parent_to_children = {}
+    for family in families.values():
+        for parent_id in [family.husband_id, family.wife_id]:
+            if parent_id not in parent_to_children:
+                parent_to_children[parent_id] = set()
+            for child in family.children:
+                parent_to_children[parent_id].add(child.id)
+    return parent_to_children
+
+
+def create_parent_to_step_children(families: dict[str, Family], parent_to_children: dict[str, Set[str]]) -> dict[
+    str, Set[str]]:
+    parent_to_step_children = {}
+
+    for family in families.values():
+        # Biological children in the current family
+        family_biological_children = set(child.id for child in family.children)
+
+        # Husband: Add wife's other children
+        for child_id in parent_to_children.get(family.wife_id, set()):
+            if child_id not in family_biological_children and \
+                    child_id not in parent_to_children.get(family.husband_id, set()):
+                parent_to_step_children.setdefault(family.husband_id, set()).add(child_id)
+
+        # Wife: Add husband's other children
+        for child_id in parent_to_children.get(family.husband_id, set()):
+            if child_id not in family_biological_children and \
+                    child_id not in parent_to_children.get(family.wife_id, set()):
+                parent_to_step_children.setdefault(family.wife_id, set()).add(child_id)
+
+    return parent_to_step_children

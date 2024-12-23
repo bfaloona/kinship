@@ -1,6 +1,7 @@
-from typing import Final, Set
+from typing import Final
 from collections import defaultdict
 
+from kinship.gedcom_parser import create_parent_to_children, create_parent_to_step_children
 from kinship.individual import Individual
 from kinship.family import Family
 from kinship.family_tree_data import FamilyTreeData
@@ -9,8 +10,6 @@ from kinship.family_tree_data import FamilyTreeData
 class RelationshipManager:
 
     def __init__(self, data: FamilyTreeData):
-        self.validate_family_tree_data()
-
         """Store data in read-only format."""
         self.individuals: Final = data.individuals
         self.families: Final = data.families
@@ -20,6 +19,8 @@ class RelationshipManager:
         self.parent_to_step_children = {}
         self.spouse_relationships = {}
         self.sibling_relationships = {}
+
+        self.validate_family_tree_data()
 
         for fam in self.families.values():
             for child in fam.children:
@@ -32,9 +33,9 @@ class RelationshipManager:
         # Family data validation
         for family in self.families.values():
             if not family.husband_id or family.husband_id == "Unknown":
-                raise ValueError (f"Invalid data: missing ID")
+                raise ValueError ("Invalid data: missing ID")
             if not family.wife_id or family.wife_id == "Unknown":
-                raise ValueError (f"Invalid data: missing ID")
+                raise ValueError ("Invalid data: missing ID")
 
     def individual_exists(self, individual_id):
         """Check if the individual ID is valid."""
@@ -77,6 +78,21 @@ class RelationshipManager:
         parents2 = self.individuals[individual2_id].parents
         return bool(set(parents1) & set(parents2))
 
+    def get_family(self, family_id):
+        """Retrieve a family by ID."""
+        return self.families.get(family_id)
+
+    def get_family_of_individual(self, individual_id):
+        """Retrieve the family of an individual."""
+        if individual_id not in self.individuals:
+            raise ValueError(f"Individual ID {individual_id} not found.")
+        for family in self.families.values():
+            if individual_id in family.children:
+                return family
+            if individual_id in family.parents:
+                return family
+        raise ValueError(f"Unable to find family for individual ID {individual_id}.")
+
     def get_ancestors(self, individual_id, depth=1) -> set:
         """Retrieve ancestors up to a given depth."""
         ancestors = set()
@@ -96,8 +112,8 @@ class RelationshipManager:
         parents = []
         if not self.individual_exists(child_id):
             return []
-        if child_id in self._child_to_parents:
-            parents = self._child_to_parents[child_id]
+        if child_id in self.child_to_parents:
+            parents = self.child_to_parents[child_id]
         return parents
 
     def get_children(self, individual_id) -> []:
@@ -105,8 +121,8 @@ class RelationshipManager:
         children = []
         if not self.individual_exists(individual_id):
             return []
-        if individual_id in self._parent_to_children:
-            children = self._parent_to_children[individual_id]
+        if individual_id in self.parent_to_children:
+            children = self.parent_to_children[individual_id]
         return children
 
     def get_descendents(self, individual_id, depth=1):
@@ -320,35 +336,3 @@ class RelationshipManager:
         return result
 
 
-def create_parent_to_children(families: dict[str, Family]) -> dict[str, Set[str]]:
-    parent_to_children = {}
-    for family in families.values():
-        for parent_id in [family.husband_id, family.wife_id]:
-            if parent_id not in parent_to_children:
-                parent_to_children[parent_id] = set()
-            for child in family.children:
-                parent_to_children[parent_id].add(child.id)
-    return parent_to_children
-
-
-def create_parent_to_step_children(families: dict[str, Family], parent_to_children: dict[str, Set[str]]) -> dict[
-    str, Set[str]]:
-    parent_to_step_children = {}
-
-    for family in families.values():
-        # Biological children in the current family
-        family_biological_children = set(child.id for child in family.children)
-
-        # Husband: Add wife's other children
-        for child_id in parent_to_children.get(family.wife_id, set()):
-            if child_id not in family_biological_children and \
-                    child_id not in parent_to_children.get(family.husband_id, set()):
-                parent_to_step_children.setdefault(family.husband_id, set()).add(child_id)
-
-        # Wife: Add husband's other children
-        for child_id in parent_to_children.get(family.husband_id, set()):
-            if child_id not in family_biological_children and \
-                    child_id not in parent_to_children.get(family.wife_id, set()):
-                parent_to_step_children.setdefault(family.wife_id, set()).add(child_id)
-
-    return parent_to_step_children

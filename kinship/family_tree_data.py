@@ -1,5 +1,7 @@
 
 from archive.poc_gpt import calculate_relationship
+from kinship.gedcom_parser import GedcomParser
+
 
 class FamilyTreeData:
     """
@@ -11,13 +13,13 @@ class FamilyTreeData:
         self.families = {}  # Dictionary of family_id -> family details
         self.relationships = []  # Dictionary of individual_id -> list of relationships
 
-    def load_from_gedcom(self, gedcom_parser):
+    def load_from_gedcom(self, gedcom_parser: GedcomParser):
         """
         Load data from a GEDCOM parser instance.
         """
-        self.individuals = gedcom_parser.parse_individuals()
-        self.families = gedcom_parser.parse_families()
-        self.relationships = gedcom_parser.parse_relationships()
+        self.individuals = gedcom_parser.get_individuals()
+        self.families = gedcom_parser.get_families()
+        self.relationships = gedcom_parser.get_relationships()
         return self
 
     def load_from_processed_files(self, individuals_file, families_file, relationships_file):

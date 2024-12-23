@@ -1,4 +1,4 @@
-from kinship.parser import Parser
+from kinship.gedcom_parser import GedcomParser
 from unittest.mock import patch, mock_open
 
 
@@ -8,8 +8,8 @@ def test_full_parse():
     )
 
     with patch("builtins.open", mock_open(read_data=mock_gedcom_content)):
-        parser = Parser("tests/mock_file.ged")
-        parser.parse()
+        parser = GedcomParser("tests/mock_file.ged")
+        parser.parse_gedcom_file()
 
         assert "I1" in parser.individuals
         assert parser.individuals["I1"].full_name == "John Doe"

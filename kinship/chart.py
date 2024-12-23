@@ -3,13 +3,13 @@ from .relationship_manager import RelationshipManager
 
 def draw_family_tree(rm: RelationshipManager):
     # Get data from parser
-    network_graph = rm._parser.get_relationships()
-    individuals = rm._parser.get_individuals()
+    relationships = rm.relationships
+    individuals = rm.individuals
 
     # Determine generations based on relationships
     generations = {}  # Maps individual ID to generation level
     for ind_id in individuals.keys():
-        generations[ind_id] = rm.calculate_generation(ind_id, network_graph)
+        generations[ind_id] = rm.calculate_generation(ind_id)
 
     # Create the PyGraphviz graph
     G = pgv.AGraph(directed=True)
@@ -41,7 +41,7 @@ def draw_family_tree(rm: RelationshipManager):
         G.node_attr[ind_id]["rank"] = f"{generation}"
 
     # Add relationships and group siblings, spouses
-    for relationship in network_graph:
+    for relationship in relationships:
         G.add_edge(
             relationship["Source"],
             relationship["Target"],
