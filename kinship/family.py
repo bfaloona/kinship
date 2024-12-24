@@ -12,10 +12,10 @@ class Family:
         children: List[Individual] = None,
     ):
         self.id = normalize_id(xref_id)
-        self.husband_name = husband.name.format() if husband else "Unknown"
-        self.husband_id = normalize_id(husband.xref_id) if husband else "-"
-        self.wife_name = wife.name.format() if wife else "Unknown"
-        self.wife_id = normalize_id(wife.xref_id) if wife else "-"
+        self.husband_name = husband.name.format() if husband else None
+        self.husband_id = normalize_id(husband.xref_id) if husband else None
+        self.wife_name = wife.name.format() if wife else None
+        self.wife_id = normalize_id(wife.xref_id) if wife else None
         self.marr_date = date_string(marr_date)
         self.children = children if children else []
 

@@ -1,9 +1,7 @@
 from typing import Final
-from collections import defaultdict
 
 from kinship.gedcom_parser import create_parent_to_children, create_parent_to_step_children
 from kinship.family_tree_data import FamilyTreeData
-from kinship.individual import Individual
 
 
 class RelationshipManager:
@@ -18,10 +16,9 @@ class RelationshipManager:
         self.parent_to_step_children = {}
         self.spouse_relationships = {}
         self.sibling_relationships = {}
-        self.first_known_ancestor = Individual
         self.total_generations = 0
 
-        self.validate_family_tree_data()
+        # self.validate_family_tree_data()
 
         for fam in self.families.values():
             for child in fam.children:
@@ -68,11 +65,11 @@ class RelationshipManager:
 
     def is_spouse(self, spouse1_id: str, spouse2_id: str):
         """Check if two individuals are spouses."""
-        return self.relationships[spouse1_id] == spouse2_id
+        return self.spouse_relationships.get(spouse1_id) == spouse2_id
 
     def is_parent(self, child_id: str, parent_id: str):
         """Check if param2 (parent) is a parent of param1 (child)."""
-        return parent_id in self.child_to_parents.get(child_id, set())
+        return parent_id in self.child_to_parents.get(child_id)
 
     def are_siblings(self, individual1_id, individual2_id):
         """Check if two individuals share at least one parent."""
@@ -88,10 +85,6 @@ class RelationshipManager:
 
 
     """ Relationship and Query Methods """
-
-    def parent_of_child(self, parent_id, child_id):
-        """Check if an individual is a parent of another."""
-        return child_id in self.individuals[parent_id].children
 
     """ Getter Methods """
 
@@ -119,7 +112,7 @@ class RelationshipManager:
         for _ in range(depth):
             next_generation = set()
             for person_id in current_generation:
-                next_generation.update(self.get_parents(person_id))
+                next_generation.update([parent for parent in self.get_parents(person_id) if parent])
             ancestors.update(next_generation)
             current_generation = next_generation
         return ancestors
@@ -158,33 +151,12 @@ class RelationshipManager:
 
     def describe_relationship(self, person1_id, person2_id):
         """Describe the relationship of person1 to person2."""
-        if self.parent_of_child(person1_id, person2_id):
-            return "parent"
-        if self.parent_of_child(person2_id, person1_id):
-            return "child"
-        if self.are_siblings(person1_id, person2_id):
-            return "sibling"
-        if person1_id in self.get_ancestors(person2_id, depth=2) and person1_id not in self.get_ancestors(person2_id, depth=1):
-            return "grandparent"
-        if person1_id in self.get_descendents(person2_id, depth=2) and person1_id not in self.get_descendents(person2_id, depth=1):
-            return "grandchild"
-        if self.individuals[person1_id].spouse == person2_id:
-            return "spouse"
-        return "unknown relationship"
+        pass
 
     def calculate_total_generations(self) -> int:
         """Logic to determine total generation number using the longest lineage,
         based on parent-child relationships"""
-        if self.total_generations > 0:
-            return self.total_generations
-
-        for individual_id in self.individuals:
-            generation = self.calculate_generation(individual_id)
-            if generation is not None and generation > self.total_generations:
-                total_generations = generation
-                self.first_known_ancestor = individual_id
-        return total_generations
-
+        pass
 
     def calculate_generation(self, individual_id) -> int:
         """Calculate the generation level of an individual."""
@@ -197,31 +169,6 @@ class RelationshipManager:
             generation += 1
         return generation
 
-    def build_relationship_graph(self, relationship_type) -> dict:
-        """
-        Build a graph representation for the given relationship type.
-        """
-        graph = defaultdict(list)
-        for rel in self.relationships:
-            if rel['relationship'] == relationship_type:
-                graph[rel['Source']].append(rel['Target'])
-                graph[rel['Target']].append(rel['Source'])  # Assuming undirected relationships
-        return graph
-
-    @staticmethod
-    def dfs_longest_chain(graph, node, visited):
-        """
-        Perform DFS to find the longest chain starting from the given node.
-        """
-        visited.add(node)
-        max_chain = [node]
-        for neighbor in graph[node]:
-            if neighbor not in visited:
-                chain = RelationshipManager.dfs_longest_chain(graph, neighbor, visited)
-                if len(chain) > len(max_chain):
-                    max_chain = chain
-        visited.remove(node)
-        return [node] + max_chain[1:]  # Include current node in the chain
 
     def longest_relationship_chain(self, relationship_type):
         """

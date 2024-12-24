@@ -53,11 +53,15 @@ class GedcomParser:
         marr_date = family.sub_tag_value("MARR/DATE")  # Ensure it's a single value
         children = [self.individuals[normalize_id(child.xref_id)] for child in children_records]
         if husband and normalize_id(husband.xref_id) not in self.individuals:
-            print(
+            raise ValueError(
                 f"Warning: Husband ID {husband.xref_id} not found in individuals list."
             )
         if wife and normalize_id(wife.xref_id) not in self.individuals:
-            print(f"Warning: Wife ID {wife.xref_id} not found in individuals list.")
+            # raise ValueError(f"Warning: Wife ID {wife.xref_id} not found in individuals list.")
+            pass
+        if not husband and not wife:
+            # raise ValueError("Warning: Family has no husband or wife.")
+            pass
         fam = Family(
             family.xref_id,
             husband if husband else None,
