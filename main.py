@@ -5,6 +5,7 @@ from kinship import chart
 from kinship.family_tree_data import FamilyTreeData
 from kinship.gedcom_parser import GedcomParser
 from kinship.relationship_manager import RelationshipManager
+from kinship.util import display
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -30,14 +31,14 @@ if __name__ == "__main__":
         rm = RelationshipManager(data)
         id = "I0001"
         fam_id = "F12"
-        print(f"### Ancestors of {rm.display(id)}:")
-        print(rm.display(rm.get_ancestors(id, depth=4)))
-        print(f"### Descendents of {rm.display(id)}:")
-        print(rm.display(rm.get_descendents(id, depth=4)))
-        print(f"### Parents of {rm.display(id)}:")
-        print(rm.display(rm.get_parents(id)))
-        print(f"### Family ({rm.display(fam_id)}) of {rm.display(id)}:")
-        print(rm.display(rm.get_family(fam_id)))
+        print(f"### Ancestors of {display(rm.individuals, id)}:")
+        print(display(rm.individuals, rm.get_ancestors(id, depth=4)))
+        print(f"### Descendents of {display(rm.individuals, id)}:")
+        print(display(rm.individuals, rm.get_descendents(id, depth=4)))
+        print(f"### Parents of {display(rm.individuals, id)}:")
+        print(display(rm.individuals, rm.get_parents(id)))
+        print(f"### Family ({display(rm.individuals, fam_id)}) of {display(rm.individuals, id)}:")
+        print(display(rm.individuals, rm.get_family(fam_id)))
         # print(f"### Spouses of ({rm.display(fam_id)}) of {rm.display(id)}:")
         # print(rm.display(rm.get_spouses(fam_id)))
         # print(f"### Children of ({rm.display(fam_id)}) of {rm.display(id)}:")

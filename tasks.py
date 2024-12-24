@@ -8,12 +8,12 @@ def lint(c):
 
 @task
 def cov(c):
-    c.run("pytest --cov=kinship .")
+    c.run("pytest --cov-branch --cov-report=html --cov=kinship .")
 
 
 @task(lint)
 def test(c):
-    c.run("pytest -v -rA --strict-config --tb=line --html=test-results.html --self-contained-html")
+    c.run("pytest -v -rA --strict-config --html=results.html --self-contained-html")
 
 
 @task

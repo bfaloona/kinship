@@ -38,7 +38,8 @@ def draw_family_tree(rm: RelationshipManager):
             margin="0.3,0.3"
         )
         # Assign ranks based on generation
-        G.node_attr[ind_id]["rank"] = f"{generation}"
+        G.get_node(ind_id).attr["rank"] = str(generation)
+
 
     # Add relationships and group siblings, spouses
     for relationship in relationships:
@@ -70,10 +71,4 @@ def draw_family_tree(rm: RelationshipManager):
     G.layout(prog="dot")
     G.draw("family_tree_generations.png", format="png")
 
-    # Display using matplotlib
-    # plt.figure(figsize=(25, 20))
-    # plt.imshow(plt.imread("family_tree_generations.png"))
-    # plt.axis("off")
-    # plt.title("Family Tree by Generations", fontsize=20, fontweight="bold")
-    # plt.show()
 
