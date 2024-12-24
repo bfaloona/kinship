@@ -1,7 +1,6 @@
 import sys
 import os
 
-from kinship import chart
 from kinship.family_tree_data import FamilyTreeData
 from kinship.gedcom_parser import GedcomParser
 from kinship.relationship_manager import RelationshipManager
@@ -46,8 +45,8 @@ if __name__ == "__main__":
         # print(f"### Step Children of ({rm.display(fam_id)}) of {rm.display(id)}:")
         # print(rm.display(rm.get_step_children(fam_id)))
 
-        chart.draw_family_tree(rm)
-        print("Family tree chart generated successfully!")
+        # chart.draw_family_tree(rm)
+        # print("Family tree chart generated successfully!")
 
     except FileNotFoundError as e:
         print(f"Please check the path and try again. Error: {e}")

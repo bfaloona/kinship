@@ -8,13 +8,10 @@ class SessionContext:
     """
 
     def __init__(self, individuals_data):
-        """
-        Initialize SessionContext with a dataset of individuals.
-        :param individuals_data: A dictionary mapping individual IDs to full names.
-        """
         self.alias_map = {}  # Maps aliases (e.g. 'Bob', 'Bobby') to unique IDs
         self.active_players = set()  # IDs of active individuals in a game
         self.individuals_data = individuals_data  # All known individuals in dataset
+        self.conflict_log = []  # Tracks alias conflicts for GPT resolution
 
     def add_alias(self, alias: str, individual_id: str):
         """
@@ -56,54 +53,43 @@ class SessionContext:
     def resolve_alias(self, alias: str):
         """
         Resolves an alias to an individual ID using fuzzy matching.
-        Confirms with the user before adding new mappings.
+        :param alias: The alias to resolve.
+        :return: A dictionary with resolved ID, suggestions, or a flag for no matches.
         """
         # Step 1: Check if alias exists directly
         individual_id = self.lookup_id_by_alias(alias)
         if individual_id:
-            return individual_id
+            return {"resolved_id": individual_id, "status": "resolved_directly"}
 
         # Step 2: Fuzzy match against known individuals
         matches = process.extract(alias, self.individuals_data.values(), limit=3)
-        suggestions = [match for match in matches if match[1] > 75]  # Confidence threshold
+        suggestions = [{"name": match[0], "confidence": match[1]} for match in matches if
+                       match[1] > 75]  # Confidence threshold
 
-        if not suggestions:
-            return None
-
-        # Step 3: Ask user to confirm closest match or add new alias
-        print(f"Did you mean one of these? {', '.join([match[0] for match in suggestions])}")
-        selected = input("Type the exact name or 'none' to reject: ").strip().lower()
-
-        if selected == 'none':
-            print("No match found.")
-            return None
-
-        for name, confidence in suggestions:
-            if name.lower() == selected:
-                # Find the corresponding ID
-                for id, full_name in self.individuals_data.items():
-                    if full_name.lower() == name.lower():
-                        self.add_alias(alias, id)
-                        return id
-
-        # If user confirms none, return None
-        print("Could not resolve alias.")
-        return None
+        if suggestions:
+            return {"suggestions": suggestions, "status": "suggestions_found"}
+        else:
+            return {"status": "no_matches"}
 
     def validate_alias_conflicts(self):
         """
         Checks for conflicts or near conflicts between aliases.
-        Re-validates mappings to ensure no duplication or errors.
+        :return: A list of conflicting alias mappings.
         """
-        reversed_map = {}
-        for alias, id in self.alias_map.items():
-            if id not in reversed_map:
-                reversed_map[id] = []
-            reversed_map[id].append(alias)
+        conflicts = []
+        reverse_map = {}
 
-        for id, aliases in reversed_map.items():
+        for alias, individual_id in self.alias_map.items():
+            if individual_id not in reverse_map:
+                reverse_map[individual_id] = []
+            reverse_map[individual_id].append(alias)
+
+        for individual_id, aliases in reverse_map.items():
             if len(aliases) > 1:
-                print(f"Warning: Multiple aliases for ID {id}: {', '.join(aliases)}")
+                conflicts.append({"individual_id": individual_id, "aliases": aliases})
+
+        self.conflict_log = conflicts
+        return conflicts
 
     def get_individual_by_id(self, individual_id: str):
         """
