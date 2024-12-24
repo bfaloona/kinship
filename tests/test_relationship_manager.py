@@ -240,11 +240,21 @@ class TestRelationshipManager(unittest.TestCase):
         f003_family = self.families['F003']
         self.assertTrue(len(f003_family.children) > 1, "Family F003 should have multiple children")
 
-    def test_one_relationship_per_pair(self):
-        relationships = [(rel['Source'], rel['Target']) for rel in self.relationships]
-        self.assertEqual(len(relationships), len(set(relationships)),
-                         "There should be only one relationship  between any two individuals.\n"
-                         f"Extra relationship: {[relationship for relationship in relationships if relationship not in set(relationship)]}")
+    def test_relationship_parent_child_one_per_pair(self):
+        parent_child_rels = [(rel['Source'], rel['Target']) for rel in self.relationships if rel['Relationship'] == 'parent-child']
+        self.assertEqual(len(parent_child_rels), len(set(parent_child_rels)),
+                         f"There should be only one parent-child relationship between any two individuals.\n"
+                         f"Extra relationship: {[relationship for relationship in parent_child_rels if relationship not in set(parent_child_rels)]}")
+
+    def test_relationship_sibling_two_way(self):
+        sibling_rels = [(rel['Source'], rel['Target']) for rel in self.relationships if rel['Relationship'] == 'sibling']
+        unvisited_sibling_rels = sibling_rels.copy()
+        while len(unvisited_sibling_rels) > 0:
+            source, target = unvisited_sibling_rels.pop()
+            if (target, source) in unvisited_sibling_rels:
+                unvisited_sibling_rels.remove((target, source))
+            else:
+                self.fail(f"Missing reciprocal sibling relationship for ({source}, {target})")
 
     @pytest.mark.skip(reason=None)
     def test_find_common_ancestor(self):

@@ -13,7 +13,7 @@ def cov(c):
 
 @task(lint)
 def test(c):
-    c.run("pytest -v -rA --strict-config --tb=line --html=output/test-results.html")
+    c.run("pytest -v -rA --strict-config --tb=line --html=test-results.html --self-contained-html")
 
 
 @task
