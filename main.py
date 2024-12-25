@@ -34,6 +34,7 @@ if __name__ == "__main__":
             data.load_individuals_from_csv("data/individuals.csv")
             data.load_families_from_csv("data/families.csv")
             data.load_relationships_from_csv("data/relationships.csv")
+            # TODO Add simplest validation here
             print("Data loaded from processed files successfully!")
 
         else:

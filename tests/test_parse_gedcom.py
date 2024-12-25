@@ -1,7 +1,6 @@
 import pytest
 from kinship.gedcom_parser import GedcomParser
 from kinship.individual import Individual
-from kinship.family import Family
 from unittest.mock import MagicMock
 
 @pytest.fixture
@@ -74,6 +73,6 @@ def test_parse_family_no_marriage_date(mock_parser):
     assert family.id == "F3"
     assert family.husband_id == "I1"
     assert family.wife_id == "I2"
-    assert family.marr_date is ''
+    assert family.marr_date == ''
     assert len(family.children) == 1
     assert family.children[0].id == "I3"

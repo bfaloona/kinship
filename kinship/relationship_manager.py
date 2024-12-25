@@ -194,76 +194,14 @@ class RelationshipManager:
         :param individual2: ID of the second individual.
         :return: The most recent common ancestor or None if no common ancestor exists.
         """
-        # Helper function to trace ancestors of a given individual
-        def trace_ancestors(individual):
-            ancestors = set()
-            stack = [individual]
-            while stack:
-                current = stack.pop()
-                if current in ancestors:
-                    continue
-                ancestors.add(current)
-                parents = self.families.get(current, {}).get('parents', [])
-                stack.extend(parents)
-            return ancestors
-
-        # Get ancestors for both individuals
-        ancestors1 = trace_ancestors(individual1)
-        ancestors2 = trace_ancestors(individual2)
-
-        # Find common ancestors
-        common_ancestors = ancestors1.intersection(ancestors2)
-
-        if not common_ancestors:
-            return None
-
-        # Determine the most recent common ancestor
-        def generational_distance(ancestor):
-            return max(
-                self.calculate_generational_distance(individual1, ancestor),
-                self.calculate_generational_distance(individual2, ancestor)
-            )
-
-        most_recent_common_ancestor = min(common_ancestors, key=generational_distance)
-        return most_recent_common_ancestor
+        pass
 
     def calculate_generational_distance(self, individual1, individual2):
         """
         Calculate the generational distance between two individuals, considering relationships such as parent-child,
         siblings, and spouses.
         """
-        # Helper function to trace ancestors of a given individual
-        def trace_ancestors(individual):
-            ancestors = set()
-            stack = [individual]
-            while stack:
-                current = stack.pop()
-                if current in ancestors:
-                    continue
-                ancestors.add(current)
-                parents = self.get_parents(current)
-                stack.extend(parents)
-            return ancestors
-
-        # Get ancestors for both individuals
-        ancestors1 = trace_ancestors(individual1)
-        ancestors2 = trace_ancestors(individual2)
-
-        # Find common ancestors
-        common_ancestors = ancestors1.intersection(ancestors2)
-
-        if not common_ancestors:
-            return None
-
-        # Determine the most recent common ancestor
-        def generational_distance(ancestor):
-            return max(
-                self.calculate_generational_distance(individual1, ancestor),
-                self.calculate_generational_distance(individual2, ancestor)
-            )
-
-        most_recent_common_ancestor = min(common_ancestors, key=generational_distance)
-        return most_recent_common_ancestor
+        pass
 
 
 

@@ -1,14 +1,9 @@
-# Unit tests for find_common_ancestor and calculate_generational_distance
 import unittest
-
-
+import pytest
 import kinship.relationship_manager as rm
 import kinship.individual as ind
 import kinship.family as f
-from types import SimpleNamespace
-
 from kinship.family_tree_data import FamilyTreeData
-
 
 class TestRelationshipManager(unittest.TestCase):
 
@@ -103,59 +98,16 @@ class TestRelationshipManager(unittest.TestCase):
         }
 
         self.families = {
-            # Great Grandparent Family - No Spouse
-            'F999': f.Family('F999',
-                             SimpleNamespace(**{"xref_id": "I999", "name": "Great Grandpa I001"}),
-                             None,
-                             '1 JAN 1920',
-                             [SimpleNamespace(**{"id": "I001", "name": "Grandpa I001"})]),
-
-            # Grandparent Family
-            'F001': f.Family('F001',
-                             SimpleNamespace(**{"xref_id": "I001", "name": "Grandpa I001"}),
-                             SimpleNamespace(**{"xref_id": "I002", "name": "Grandma I002"}),
-                             '1 JAN 1950',
-                             [SimpleNamespace(**{"id": "I003", "name": "Son I001"}),
-                              SimpleNamespace(**{"id": "I004", "name": "Daughter I001"})]),
-            # Son + Woman + Grandson
-            'F002': f.Family('F002',
-                             SimpleNamespace(**{"xref_id": "I003", "name": "Son I001"}),
-                             SimpleNamespace(**{"xref_id": "I005", "name": "Son's Wife I005"}),
-                             '10 JUN 1980',
-                             [SimpleNamespace(**{"id": "I006", "name": "Grandson I001"})]),
-
-            # Daughter + Man + Grandson + Granddaughter
-            'F003': f.Family('F003',
-                             SimpleNamespace(**{"xref_id": "I004", "name": "Daughter I001"}),
-                             SimpleNamespace(**{"xref_id": "I007", "name": "Daughter's Husband I007"}),
-                             '15 SEP 1985',
-                             [SimpleNamespace(**{"id": "I008", "name": "Grandson I007"}),
-                              SimpleNamespace(**{"id": "I009", "name": "Granddaughter I007"})]),
-
-            # Granddaughter + Man + Great-grandson
-            'F004': f.Family('F004',
-                             SimpleNamespace(**{"xref_id": "I009", "name": "Granddaughter I007"}),
-                             SimpleNamespace(**{"xref_id": "I010", "name": "Granddaughter's Husband I010"}),
-                             '20 DEC 2015',
-                             [SimpleNamespace(**{"id": "I011", "name": "Great-grandson I010"})]),
-
-            # Great-grandson + New Woman
-            'F005': f.Family('F005',
-                             SimpleNamespace(**{"xref_id": "I011", "name": "Great-grandson I010"}),
-                             SimpleNamespace(**{"xref_id": "I013", "name": "Great-grandson\'s Wife I013"}),
-                             '10 FEB 2040',
-                             []),
-
-            # Step Dad and Step child to Daughter I001 in Fam F003
-            'F006': f.Family('F006',
-                             SimpleNamespace(**{"xref_id": "I010", "name": "Granddaughter's Husband I010"}),
-                             SimpleNamespace(**{"xref_id": "I014", "name": "Wife to Husband I010 I014"}),
-                             '5 MAR 2020',
-                             [SimpleNamespace(**{"id": "I015", "name": "Circa Great-grand and Stepson I010"})])
+            'F999': f.Family('F999', 'I999', 'Great Grandpa I001', None, None, '1 JAN 1920', [self.individuals['I001']]),
+            'F001': f.Family('F001', 'I001', 'Grandpa I001', 'I002', 'Grandma I002', '1 JAN 1950', [self.individuals['I003'], self.individuals['I004']]),
+            'F002': f.Family('F002', 'I003', 'Son I001', 'I005', 'Son\'s Wife I005', '10 JUN 1980', [self.individuals['I006']]),
+            'F003': f.Family('F003', 'I004', 'Daughter I001', 'I007', 'Daughter\'s Husband I007', '15 SEP 1985', [self.individuals['I008'], self.individuals['I009']]),
+            'F004': f.Family('F004', 'I009', 'Granddaughter I007', 'I010', 'Granddaughter\'s Husband I010', '20 DEC 2015', [self.individuals['I011']]),
+            'F005': f.Family('F005', 'I011', 'Great-grandson I010', 'I013', 'Great-grandson\'s Wife I013', '10 FEB 2040', []),
+            'F006': f.Family('F006', 'I010', 'Granddaughter\'s Husband I010', 'I014', 'Wife to Husband I010 I014', '5 MAR 2020', [self.individuals['I015']])
         }
 
         self.relationships = [
-            # Parent-Child Relationships
             {'Source': 'I999', 'Target': 'I001', 'Relationship': 'parent-child'},
             {'Source': 'I001', 'Target': 'I003', 'Relationship': 'parent-child'},
             {'Source': 'I002', 'Target': 'I003', 'Relationship': 'parent-child'},
@@ -171,9 +123,7 @@ class TestRelationshipManager(unittest.TestCase):
             {'Source': 'I010', 'Target': 'I011', 'Relationship': 'parent-child'},
             {'Source': 'I011', 'Target': 'I015', 'Relationship': 'parent-child'},
             {'Source': 'I014', 'Target': 'I015', 'Relationship': 'parent-child'},
-            {'Source': 'I010', 'Target': 'I015', 'Relationship': 'parent-child'},  # New child in F006
-
-            # Spousal Relationships
+            {'Source': 'I010', 'Target': 'I015', 'Relationship': 'parent-child'},
             {'Source': 'I001', 'Target': 'I002', 'Relationship': 'spouse'},
             {'Source': 'I002', 'Target': 'I001', 'Relationship': 'spouse'},
             {'Source': 'I003', 'Target': 'I005', 'Relationship': 'spouse'},
@@ -186,14 +136,10 @@ class TestRelationshipManager(unittest.TestCase):
             {'Source': 'I013', 'Target': 'I011', 'Relationship': 'spouse'},
             {'Source': 'I010', 'Target': 'I014', 'Relationship': 'spouse'},
             {'Source': 'I014', 'Target': 'I010', 'Relationship': 'spouse'},
-
-            # Sibling Relationships
             {'Source': 'I003', 'Target': 'I004', 'Relationship': 'sibling'},
             {'Source': 'I004', 'Target': 'I003', 'Relationship': 'sibling'},
             {'Source': 'I008', 'Target': 'I009', 'Relationship': 'sibling'},
             {'Source': 'I009', 'Target': 'I008', 'Relationship': 'sibling'},
-
-            # Step-Parent Relationships (Assuming `parent_to_step_children` is properly initialized)
             {'Source': 'I010', 'Target': 'I008', 'Relationship': 'step-parent'},
             {'Source': 'I010', 'Target': 'I009', 'Relationship': 'step-parent'},
             {'Source': 'I014', 'Target': 'I011', 'Relationship': 'step-parent'},
@@ -259,7 +205,7 @@ class TestRelationshipManager(unittest.TestCase):
         children = [rel for rel in self.relationships if rel['Source'] == 'I004' and rel['Relationship'] == 'parent-child']
         self.assertTrue("Daughter I001 (I004) should have multiple children", len(children) > 1)
 
-    @unittest.expectedFailure
+    @pytest.mark.xfail
     def test_multiple_siblings(self):
         siblings = [rel for rel in self.relationships if rel['Source'] == 'I008' and rel['Relationship'] == 'sibling']
         self.assertEqual("Grandson I007 (I008) should not have multiple siblings", 1, len(siblings))
@@ -268,7 +214,7 @@ class TestRelationshipManager(unittest.TestCase):
         step_parents = [rel for rel in self.relationships if rel['Target'] == 'I008' and rel['Relationship'] == 'step-parent']
         self.assertTrue("Grandson I007 (I008) should have multiple step-parents", len(step_parents) > 1)
 
-    @unittest.expectedFailure
+    @pytest.mark.xfail
     def test_multiple_families(self):
         families = [family for family in self.families.values() if 'I008' in [child.id for child in family.children]]
         self.assertEqual("Grandson I007 (I008) should not have multiple families", 1, len(families))
@@ -312,11 +258,11 @@ class TestRelationshipManager(unittest.TestCase):
     def test_get_descendents_depth_10(self):
         self.assertEqual({'I003', 'I004', 'I006', 'I008', 'I009', 'I011'}, self.manager.get_descendents('I001', depth=10))
 
-    @unittest.expectedFailure
+    @pytest.mark.xfail
     def test_find_common_ancestor(self):
         pass
 
-    @unittest.expectedFailure
+    @pytest.mark.xfail
     def test_calculate_generational_distance(self):
         # Valid ancestor relationship
         # Dad
