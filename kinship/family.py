@@ -5,17 +5,19 @@ from .individual import Individual
 class Family:
     def __init__(
         self,
-        xref_id: str,
-        husband=None,
-        wife=None,
+        id: str,
+        husband_id=None,
+        husband_name=None,
+        wife_id=None,
+        wife_name=None,
         marr_date: str = None,
         children: List[Individual] = None,
     ):
-        self.id = normalize_id(xref_id)
-        self.husband_name = husband.name.format() if husband else None
-        self.husband_id = normalize_id(husband.xref_id) if husband else None
-        self.wife_name = wife.name.format() if wife else None
-        self.wife_id = normalize_id(wife.xref_id) if wife else None
+        self.id = normalize_id(id)
+        self.husband_name = husband_name if husband_name else None
+        self.husband_id = husband_id if husband_id else None
+        self.wife_name = wife_name if wife_name else None
+        self.wife_id = wife_id if wife_id else None
         self.marr_date = date_string(marr_date)
         self.children = children if children else []
 

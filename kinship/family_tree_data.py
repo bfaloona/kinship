@@ -1,5 +1,7 @@
 
 from archive.poc_gpt import calculate_relationship
+from kinship.individual import Individual
+from kinship.family import Family
 from kinship.gedcom_parser import GedcomParser
 
 
@@ -40,25 +42,45 @@ class FamilyTreeData:
         self.relationships = relationships
         return self
 
-    @staticmethod
-    def _load_csv(file_path, mode="hash_with_id"):
-        """
-        Helper method to load CSV data into a dictionary or list based on the mode.
-
-        :param file_path: Path to the CSV file.
-        :param mode: "hash_with_id" (id -> hash) or "hash_per_row" (list of hashes).
-        """
+    def load_families_from_csv(self, file_path):
         import csv
-
-        if mode not in {"hash_with_id", "hash_per_row"}:
-            raise ValueError("Invalid mode. Choose 'hash_with_id' or 'hash_per_row'.")
 
         with open(file_path, 'r') as file:
             reader = csv.DictReader(file)
-            if mode == "hash_with_id":
-                return {row['id']: row for row in reader}
-            elif mode == "hash_per_row":
-                return [row for row in reader]
+            for row in reader:
+                family_id = row['Family_ID']
+                if family_id not in self.families:
+                    self.families[family_id] = Family(
+                        id=row['Family_ID'],
+                        husband_id=row['Husband_ID'],
+                        husband_name=row['Husband_Name'],
+                        wife_id=row['Wife_ID'],
+                        wife_name=row['Wife_Name'],
+                        marr_date=row['Marriage_Date']
+                    )
+                self.families[family_id].children.append(row['Child_ID'])
+
+    def load_individuals_from_csv(self, file_path):
+        import csv
+        with open(file_path, 'r') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                individual_id = row['Individual_ID']
+                self.individuals[individual_id] = Individual(
+                    id=row['Individual_ID'],
+                    full_name=row['Individual_Name'],
+                    birth_date=row['Birth_Date'],
+                    birth_place=row['Birth_Place'],
+                    death_date=row['Death_Date'],
+                    death_place=row['Death_Place']
+                )
+
+    def load_relationships_from_csv(self, file_path):
+        import csv
+        with open(file_path, 'r') as file:
+            reader = csv.DictReader(file)
+            self.relationships = [row for row in reader]
+
 
 
     def get_individual(self, individual_id):
@@ -101,9 +123,9 @@ class FamilyTreeData:
         if orphaned_individuals:
             raise ValueError(f"Orphaned individuals detected: {orphaned_individuals}")
 
-    def validate_data(self):
+    def check_data_integrity(self):
         """
-        Validate the data for unit and integration testing.
+        Validate data integrity.
         """
         # Example: Check if every relationship points to a valid individual
         for individual, relations in self.relationships.items():

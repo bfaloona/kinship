@@ -5,21 +5,21 @@ from invoke import task
 def lint(c):
     c.run("ruff check")
 
-
 @task
 def cov(c):
     c.run("pytest --cov-branch --cov-report=html --cov=kinship .")
-
 
 @task(lint)
 def test(c):
     c.run("pytest -v -rA --strict-config --html=results.html --self-contained-html")
 
-
 @task
 def parse(c, path):
-    c.run(f"python main.py {path}")
+    c.run(f"python main.py parse {path}")
 
+@task
+def load(c):
+    c.run("python main.py load")
 
 @task
 def venv(c):
