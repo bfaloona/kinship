@@ -63,9 +63,11 @@ class GedcomParser:
             # raise ValueError("Warning: Family has no husband or wife.")
             pass
         fam = Family(
-            family.xref_id,
-            husband if husband else None,
-            wife if wife else None,
+            normalize_id(family.xref_id),
+            normalize_id(husband.xref_id) if husband else None,
+            husband.name.format() if husband else None,
+            normalize_id(wife.xref_id) if wife else None,
+            wife.name.format() if wife else None,
             marr_date if marr_date else None,
             children
         )
@@ -254,7 +256,6 @@ def create_parent_to_children(families: dict[str, Family]) -> dict[str, Set[str]
             for child in family.children:
                 parent_to_children[parent_id].add(child.id)
     return parent_to_children
-
 
 def create_parent_to_step_children(families: dict[str, Family], parent_to_children: dict[str, Set[str]]) -> dict[
     str, Set[str]]:
