@@ -37,12 +37,13 @@ class GedcomParser:
             name = individual.name.format()
         except AttributeError:
             name = individual.sub_tag_value("NAME") or "Unknown"
+        sex = individual.sex
         birth_date = individual.sub_tag_value("BIRT/DATE")
         birth_place = individual.sub_tag_value("BIRT/PLAC")
         death_date = individual.sub_tag_value("DEAT/DATE")
         death_place = individual.sub_tag_value("DEAT/PLAC")
         ind = Individual(
-            normalize_id(individual.xref_id), name, birth_date, birth_place, death_date, death_place
+            normalize_id(individual.xref_id), name, sex, birth_date, birth_place, death_date, death_place
         )
         self.individuals[ind.id] = ind
 
@@ -89,6 +90,7 @@ class GedcomParser:
             fieldnames = [
                 "Individual_ID",
                 "Individual_Name",
+                "Sex",
                 "Birth_Date",
                 "Birth_Place",
                 "Death_Date",
@@ -101,6 +103,7 @@ class GedcomParser:
                     dict(
                         Individual_ID=ind.id,
                         Individual_Name=ind.full_name,
+                        Sex=ind.sex,
                         Birth_Date=ind.birth_date if ind.birth_date else "",
                         Birth_Place=ind.birth_place if ind.birth_place else "",
                         Death_Date=ind.death_date if ind.death_date else "",

@@ -69,6 +69,7 @@ class FamilyTreeData:
                 self.individuals[individual_id] = Individual(
                     id=row['Individual_ID'],
                     full_name=row['Individual_Name'],
+                    sex=row['Sex'],
                     birth_date=row['Birth_Date'],
                     birth_place=row['Birth_Place'],
                     death_date=row['Death_Date'],

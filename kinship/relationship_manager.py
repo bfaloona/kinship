@@ -41,15 +41,68 @@ class RelationshipManager:
         }
         return inverses.get(relation_type, "unknown")
 
-    def get_relationship(self, from_id: str, to_id: str) -> str:
+    def get_relationship(self, subject_id: str, target_id: str) -> str:
         """
         Determine the relationship between two individuals.
-        Returns the relationship from the perspective of `from_id`.
+        Returns the relationship from the perspective of `subject_id`.
         """
-        for neighbor, relationship in self.relationship_graph[from_id]:
-            if neighbor == to_id:
-                return relationship
-        return "No relationship found."
+        path = self._find_shortest_path(subject_id, target_id)
+        if not path:
+            return "No relationship found."
+        return self._derive_relationship_from_path(path, target_id)
+
+    def _find_shortest_path(self, start: str, end: str) -> List[Tuple[str, str]]:
+        """
+        Perform BFS to find the shortest relationship path between two individuals.
+        Returns the path as a list of tuples (person_id, relationship).
+        """
+        queue = deque([(start, [])])
+        visited = set()
+
+        while queue:
+            current, path = queue.popleft()
+            if current == end:
+                return path
+            if current in visited:
+                continue
+            visited.add(current)
+            for neighbor, relationship in self.relationship_graph[current]:
+                if neighbor not in visited:
+                    queue.append((neighbor, path + [(current, relationship)]))
+
+        return []
+
+    def _derive_relationship_from_path(self, path: List[Tuple[str, str]], target_id: str) -> str:
+        """
+        Derive the relationship type from the shortest path.
+        Adds sex-based specificity (e.g., 'father'/'mother') when possible.
+        """
+        if len(path) == 1:
+            base_relationship = path[0][1]
+            return self._specific_relationship(base_relationship, target_id)
+
+        relationships = [step[1] for step in path]
+
+        # Handle grandparent and other indirect relationships
+        if relationships == ["parent", "parent"]:
+            return self._specific_relationship("grandparent", target_id)
+        if relationships == ["child", "child"]:
+            return self._specific_relationship("grandchild", target_id)
+
+        # Fallback for unsupported paths
+        return "indirect relationship"
+
+    def _specific_relationship(self, relationship: str, target_id: str) -> str:
+        """
+        Add sex-specific context to the relationship based on the target's sex.
+        """
+        if relationship in {"parent", "grandparent"}:
+            target_sex = self.individuals.get(target_id, {}).sex
+            if target_sex == "M":
+                return "father" if relationship == "parent" else "grandfather"
+            elif target_sex == "F":
+                return "mother" if relationship == "parent" else "grandmother"
+        return relationship
 
     def get_cousin_relationship(self, person_a: str, person_b: str) -> str:
         """

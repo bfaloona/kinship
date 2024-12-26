@@ -1,7 +1,8 @@
 class Individual:
-    def __init__(self, id, full_name, birth_date=None, birth_place=None, death_date=None, death_place=None):
+    def __init__(self, id, full_name, sex, birth_date=None, birth_place=None, death_date=None, death_place=None):
         self.id = id
         self.full_name = full_name
+        self.sex = sex
         self.birth_date = birth_date
         self.birth_place = birth_place
         self.death_date = death_date

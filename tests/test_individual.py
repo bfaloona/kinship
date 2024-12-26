@@ -3,7 +3,7 @@ from kinship.individual import Individual
 
 def test_individual_initialization():
     ind = Individual(
-        "I1", "John Doe", "1990-01-01", "New York", "2020-01-01", "Los Angeles"
+        "I1", "John Doe", "M", "1990-01-01", "New York", "2020-01-01", "Los Angeles"
     )
     assert ind.id == "I1"
     assert ind.birth_date == "1990-01-01"
