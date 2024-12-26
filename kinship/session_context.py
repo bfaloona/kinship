@@ -62,9 +62,8 @@ class SessionContext:
             return {"resolved_id": individual_id, "status": "resolved_directly"}
 
         # Step 2: Fuzzy match against known individuals
-        matches = process.extract(alias, self.individuals_data.values(), limit=3)
-        suggestions = [{"name": match[0], "confidence": match[1]} for match in matches if
-                       match[1] > 75]  # Confidence threshold
+        matches = process.extract(alias, self.individuals_data.values(), limit=5)
+        suggestions = [{"name": match[0], "confidence": match[1]} for match in matches if match[1] > 60]  # Lower confidence threshold
 
         if suggestions:
             return {"suggestions": suggestions, "status": "suggestions_found"}
@@ -113,3 +112,24 @@ class SessionContext:
         """
         for player_id in self.get_active_players():
             print(self.get_individual_by_id(player_id))
+
+    def list_potential_matches(self, alias: str):
+        """
+        Lists potential matches for a given alias using fuzzy matching.
+        :param alias: The alias to match.
+        :return: A list of potential matches with confidence scores.
+        """
+        matches = process.extract(alias, self.individuals_data.values(), limit=10)
+        return [{"name": match[0], "confidence": match[1]} for match in matches]
+
+    def add_alias_with_confirmation(self, alias: str, individual_id: str):
+        """
+        Adds an alias to an individual with confirmation to avoid conflicts.
+        :param alias: The alias to add.
+        :param individual_id: The individual ID to map the alias to.
+        """
+        existing_id = self.lookup_id_by_alias(alias)
+        if existing_id and existing_id != individual_id:
+            print(f"Conflict: Alias '{alias}' is already mapped to ID '{existing_id}'.")
+            return
+        self.add_alias(alias, individual_id)

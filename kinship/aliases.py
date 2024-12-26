@@ -1,1 +1,0 @@
-from ged4py.model import Individual as Ged4pyIndividual #noqa F401
