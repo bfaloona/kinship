@@ -13,3 +13,6 @@ export CFLAGS="-I $GRAPHVIZ_DIR/include"
 export LDFLAGS="-L $GRAPHVIZ_DIR/lib"
 ```
 3. `pip install pygraphviz`
+
+## Sample gedcom files
+https://github.com/findmypast/gedcom-samples/tree/main
