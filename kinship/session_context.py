@@ -74,15 +74,22 @@ class SessionContext:
                        match[1] >= confidence_threshold]
 
         if suggestions:
-            # Automatically add the best match if auto_add is enabled
-            if len(suggestions) == 1:
-                best_match = matches[0]
-                if auto_add and best_match[1] >= confidence_threshold:
-                    best_name = best_match[0]
-                    matched_id = next((id for id, name in self.individuals_data.items() if name == best_name), None)
-                    if matched_id:
-                        self.add_alias(alias, matched_id)
-                        return {"resolved_id": matched_id, "status": "resolved_and_added"}
+            # Find the suggestion with the highest confidence
+            best_match = max(suggestions, key=lambda x: x["confidence"])
+            highest_confidence = best_match["confidence"]
+
+            if auto_add and best_match["confidence"] >= confidence_threshold:
+
+                # Check if there are multiple matches with the same highest confidence
+                same_confidence_matches = [s for s in suggestions if s["confidence"] == highest_confidence]
+                if len(same_confidence_matches) > 1:
+                    return {"suggestions": suggestions, "status": "suggestions_found"}
+
+                best_name = best_match["name"]
+                matched_id = next((id for id, name in self.individuals_data.items() if name == best_name), None)
+                if matched_id:
+                    self.add_alias(alias, matched_id)
+                    return {"resolved_id": matched_id, "status": "resolved_and_added"}
 
             return {"suggestions": suggestions, "status": "suggestions_found"}
         else:

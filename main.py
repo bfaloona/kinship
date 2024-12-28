@@ -131,19 +131,24 @@ if __name__ == "__main__":
                     print(
                         f"Most common first name: {most_common_first_name[0][0]} (count: {most_common_first_name[0][1]})")
 
-                # Example: Print relationships between two individuals
+                print(" ")
+                print("Example: Print relationships between two individuals")
 
                 # Collect two names from the user
-                # name1 = input("Enter the first name: ")
-                # name2 = input("Enter the second name: ")
-                name1 = "Anne H"
-                name2 = "William"
+                # name1 = "Ann"
+                # name2 = "Will"
+                name1 = input("Enter the first name: ")
+                name2 = input("Enter the second name: ")
+                print(" ")
 
-                # Perform fuzzy matching to find the closest matches in all possible names
-                # all_names = [ind.full_name for ind in data.individuals.values()]
-                # best_match1 = process.extractOne(name1, all_names)
-                # best_match2 = process.extractOne(name2, all_names)
+                # resolve alias to find the closest matches in all possible names
                 id1, id2 = None, None
+                for name in [name1, name2]:
+                    print("Resolving alias for:", name)
+                    result = session.resolve_alias(name)
+                    for suggestion in result.get("suggestions", []):
+                        print(f"  '{suggestion['name']}' (confidence: {suggestion['confidence']})")
+
                 if session.alias_matched(name1):
                     id1 = session.lookup_id_by_alias(name1)
                 if session.alias_matched(name2):
