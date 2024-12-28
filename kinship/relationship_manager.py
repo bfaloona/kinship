@@ -20,7 +20,7 @@ class RelationshipManager:
         graph = defaultdict(list)
 
         for relation in self.relationships:
-            person_a, person_b, relation_type = relation
+            person_a, person_b, relation_type = relation.values()
             graph[person_a].append((person_b, relation_type))
             graph[person_b].append((person_a, self._inverse_relationship(relation_type)))
 

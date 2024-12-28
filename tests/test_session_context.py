@@ -1,7 +1,6 @@
 import unittest
 from kinship.session_context import SessionContext
 
-
 class TestSessionContext(unittest.TestCase):
 
     def setUp(self):
@@ -20,13 +19,17 @@ class TestSessionContext(unittest.TestCase):
         self.assertEqual(result["status"], "resolved_directly")
 
     def test_resolve_alias_fuzzy_match(self):
-        result = self.context.resolve_alias("John Smith")
+        result = self.context.resolve_alias("John", confidence_threshold=70)
         self.assertEqual(result["status"], "suggestions_found")
         self.assertTrue(any(s["name"] == "John Smith" for s in result["suggestions"]))
 
     def test_resolve_alias_no_match(self):
-        result = self.context.resolve_alias("Nonexistent Name")
+        result = self.context.resolve_alias("Nonexistent Name", confidence_threshold=70)
         self.assertEqual(result["status"], "no_matches")
+
+    def test_list_potential_matches(self):
+        matches = self.context.list_potential_matches("Jane", confidence_threshold=50)
+        self.assertTrue(any(m["name"].lower() == "jane doe" for m in matches))
 
     def test_validate_alias_conflicts(self):
         self.context.add_alias("Johnny", "I0001")
@@ -66,11 +69,29 @@ class TestSessionContext(unittest.TestCase):
 
     def test_add_individual(self):
         self.context.add_individual("Bobby", "Bob Brown", "id004")
-        self.assertEqual(self.context.get_individual_by_id("id004"), "Bob Brown")
+        self.assertEqual(self.context.get_individual_by_id("id004"), "bob brown")
         self.assertEqual(self.context.lookup_id_by_alias("Bobby"), "id004")
+
+    def test_resolve_alias_auto_add(self):
+        result = self.context.resolve_alias("John S")
+        self.assertEqual("resolved_and_added", result["status"])
+        self.assertIn("john s", self.context.alias_map)
+
+    def test_resolve_alias_auto_add_high_con(self):
+        result = self.context.resolve_alias("John Smit", confidence_threshold=90, auto_add=True)
+        self.assertEqual("resolved_and_added", result["status"])
+        self.assertIn("john smit", self.context.alias_map)
+
+    def test_resolve_alias_auto_add_false(self):
+        result = self.context.resolve_alias("J", confidence_threshold=60, auto_add=False)
+        self.assertEqual(result["status"], "suggestions_found")
+        self.assertNotIn("j", self.context.alias_map)
 
     def test_display_active_players(self):
         self.context.add_active_player("I0001")
         self.context.add_active_player("I0002")
-        self.context.display_active_players()  # Check output manually for player details
+        self.assertTrue("John Smith" in self.context.display_active_players())
+        self.assertTrue("Jane Doe" in self.context.display_active_players())
 
+if __name__ == "__main__":
+    unittest.main()

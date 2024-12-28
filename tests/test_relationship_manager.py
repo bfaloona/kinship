@@ -40,14 +40,14 @@ class TestRelationshipManager(unittest.TestCase):
         }
 
         self.relationships = [
-            ('I999', 'I001', 'parent'),
-            ('I001', 'I003', 'parent'),
-            ('I002', 'I003', 'parent'),
-            ('I001', 'I004', 'parent'),
-            ('I002', 'I004', 'parent'),
-            ('I003', 'I006', 'parent'),
-            ('I005', 'I006', 'parent'),
-            ('I001', 'I002', 'spouse'),
+            {'Source': 'I999', 'Target': 'I001', 'Relationship': 'parent'},
+            {'Source': 'I001', 'Target': 'I003', 'Relationship': 'parent'},
+            {'Source': 'I002', 'Target': 'I003', 'Relationship': 'parent'},
+            {'Source': 'I001', 'Target': 'I004', 'Relationship': 'parent'},
+            {'Source': 'I002', 'Target': 'I004', 'Relationship': 'parent'},
+            {'Source': 'I003', 'Target': 'I006', 'Relationship': 'parent'},
+            {'Source': 'I005', 'Target': 'I006', 'Relationship': 'parent'},
+            {'Source': 'I001', 'Target': 'I002', 'Relationship': 'spouse'},
         ]
 
         data = FamilyTreeData()
@@ -69,6 +69,9 @@ class TestRelationshipManager(unittest.TestCase):
 
     def test_spousal_relationship(self):
         spouses = self.manager.get_relationship('I001', 'I002')
+        self.assertEqual(spouses, 'spouse')
+        # inverted
+        spouses = self.manager.get_relationship('I002', 'I001')
         self.assertEqual(spouses, 'spouse')
 
     def test_invalid_relationship(self):

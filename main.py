@@ -3,6 +3,8 @@ import os
 
 from kinship.family_tree_data import FamilyTreeData
 from kinship.gedcom_parser import GedcomParser
+from kinship.relationship_manager import RelationshipManager
+from kinship.session_context import SessionContext
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -36,6 +38,9 @@ if __name__ == "__main__":
             data.load_relationships_from_csv(os.path.join(sys.argv[2], "relationships.csv"))
             # TODO Add simplest validation here
             print("Data loaded from processed files successfully!")
+
+            session = SessionContext({key: ind.full_name for key, ind in data.individuals.items()})
+            rm = RelationshipManager(data)
 
             from statistics import mean, median
             from collections import Counter
@@ -90,6 +95,70 @@ if __name__ == "__main__":
                 print(f"Unique surnames: {unique_surnames}:")
                 for surname in set(surnames):
                     print(f"  {surname}")
+                print(" ")
+
+                # Example: Count the number of males and females
+                num_males = sum(1 for ind in data.individuals.values() if ind.sex == 'M')
+                num_females = sum(1 for ind in data.individuals.values() if ind.sex == 'F')
+                print(f"Number of males: {num_males}")
+                print(f"Number of females: {num_females}")
+
+                # Example: Find the oldest and youngest individuals
+                individuals_by_birth_date = sorted(data.individuals.values(), key=lambda ind: ind.birth_date)
+                oldest_individual = individuals_by_birth_date[0]
+                youngest_individual = individuals_by_birth_date[-1]
+                print(f"Oldest individual: {oldest_individual.full_name} (born {oldest_individual.birth_date})")
+                print(f"Youngest individual: {youngest_individual.full_name} (born {youngest_individual.birth_date})")
+
+                # Example: Calculate the average lifespan
+                lifespans = []
+                for ind in data.individuals.values():
+                    if ind.birth_date and ind.death_date:
+                        try:
+                            age = (ind.death_date - ind.birth_date).days / 365.25
+                        except (AttributeError, TypeError):
+                            age = None
+                    lifespans.append(age) if age else None
+                average_lifespan = mean(lifespans) if lifespans else None
+
+                print(
+                    f"Average lifespan: {average_lifespan:.2f} years" if average_lifespan else "Average lifespan: N/A")
+
+                # Example: Find the most common first name
+                first_names = [ind.full_name.split()[0] for ind in data.individuals.values()]
+                most_common_first_name = Counter(first_names).most_common(1)
+                if most_common_first_name:
+                    print(
+                        f"Most common first name: {most_common_first_name[0][0]} (count: {most_common_first_name[0][1]})")
+
+                # Example: Print relationships between two individuals
+
+                # Collect two names from the user
+                # name1 = input("Enter the first name: ")
+                # name2 = input("Enter the second name: ")
+                name1 = "Anne H"
+                name2 = "William"
+
+                # Perform fuzzy matching to find the closest matches in all possible names
+                # all_names = [ind.full_name for ind in data.individuals.values()]
+                # best_match1 = process.extractOne(name1, all_names)
+                # best_match2 = process.extractOne(name2, all_names)
+                id1, id2 = None, None
+                if session.alias_matched(name1):
+                    id1 = session.lookup_id_by_alias(name1)
+                if session.alias_matched(name2):
+                    id2 = session.lookup_id_by_alias(name2)
+
+                ind1 = data.get_individual(id1) if id1 else None
+                ind2 = data.get_individual(id2) if id2 else None
+                # Display individuals and their IDs
+                print(f"Best match for '{name1}': {data.display(ind1)}") if ind1 else print(f"No match found for '{name1}'")
+                print(f"Best match for '{name2}': {data.display(ind2)}") if ind2 else print(f"No match found for '{name2}'")
+
+                if ind1 and ind2:
+                    # Display the relationship between the two individuals
+                    relationship = rm.get_relationship(id1, id2)
+                    print(f"Relationship between {ind1.full_name} and {ind2.full_name}: {relationship}")
 
             except Exception as e:
                 print(f"Error analyzing family tree data: {e}")

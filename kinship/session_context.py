@@ -8,9 +8,10 @@ class SessionContext:
     """
 
     def __init__(self, individuals_data):
+        # Store individuals data in lowercase for efficient matching
         self.alias_map = {}  # Maps aliases (e.g. 'Bob', 'Bobby') to unique IDs
         self.active_players = set()  # IDs of active individuals in a game
-        self.individuals_data = individuals_data  # All known individuals in dataset
+        self.individuals_data = individuals_data  # Dict{id: Individual} of all known individuals
         self.conflict_log = []  # Tracks alias conflicts for GPT resolution
 
     def add_alias(self, alias: str, individual_id: str):
@@ -44,16 +45,22 @@ class SessionContext:
         """
         return individual_id in self.active_players
 
-    def get_active_players(self):
+    def get_active_players(self) -> []:
         """
         Returns a list of currently active player IDs.
         """
         return list(self.active_players)
 
-    def resolve_alias(self, alias: str):
+    def alias_matched(self, alias: str) -> bool:
+        result = self.resolve_alias(alias)
+        return result["status"] == "resolved_directly" or result["status"] == "resolved_and_added"
+
+    def resolve_alias(self, alias: str, confidence_threshold: int = 80, auto_add: bool = True):
         """
         Resolves an alias to an individual ID using fuzzy matching.
         :param alias: The alias to resolve.
+        :param confidence_threshold: Minimum confidence score for a match to be considered.
+        :param auto_add: Whether to add the resolved alias to the alias_map.
         :return: A dictionary with resolved ID, suggestions, or a flag for no matches.
         """
         # Step 1: Check if alias exists directly
@@ -63,9 +70,20 @@ class SessionContext:
 
         # Step 2: Fuzzy match against known individuals
         matches = process.extract(alias, self.individuals_data.values(), limit=5)
-        suggestions = [{"name": match[0], "confidence": match[1]} for match in matches if match[1] > 60]  # Lower confidence threshold
+        suggestions = [{"name": match[0], "confidence": match[1]} for match in matches if
+                       match[1] >= confidence_threshold]
 
         if suggestions:
+            # Automatically add the best match if auto_add is enabled
+            if len(suggestions) == 1:
+                best_match = matches[0]
+                if auto_add and best_match[1] >= confidence_threshold:
+                    best_name = best_match[0]
+                    matched_id = next((id for id, name in self.individuals_data.items() if name == best_name), None)
+                    if matched_id:
+                        self.add_alias(alias, matched_id)
+                        return {"resolved_id": matched_id, "status": "resolved_and_added"}
+
             return {"suggestions": suggestions, "status": "suggestions_found"}
         else:
             return {"status": "no_matches"}
@@ -103,24 +121,30 @@ class SessionContext:
         if individual_id in self.individuals_data:
             print(f"Individual ID {individual_id} already exists.")
             return
-        self.individuals_data[individual_id] = full_name
+        self.individuals_data[individual_id] = full_name.lower()
         self.add_alias(alias, individual_id)
 
-    def display_active_players(self):
+    def display_active_players(self) -> str:
         """
         Prints details of active players.
         """
+        output = ""
         for player_id in self.get_active_players():
-            print(self.get_individual_by_id(player_id))
+            output = f"{output}{self.get_individual_by_id(player_id)}\n"
+        return output
 
-    def list_potential_matches(self, alias: str):
+    def list_potential_matches(self, alias: str, confidence_threshold=60):
         """
         Lists potential matches for a given alias using fuzzy matching.
         :param alias: The alias to match.
+        :param confidence_threshold: Minimum confidence score for matches.
         :return: A list of potential matches with confidence scores.
         """
-        matches = process.extract(alias, self.individuals_data.values(), limit=10)
-        return [{"name": match[0], "confidence": match[1]} for match in matches]
+        matches = process.extract(alias.lower(), self.individuals_data.values(), limit=10)
+        return [
+            {"name": match[0], "confidence": match[1]}
+            for match in matches if match[1] >= confidence_threshold
+        ]
 
     def add_alias_with_confirmation(self, alias: str, individual_id: str):
         """
