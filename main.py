@@ -112,8 +112,10 @@ if __name__ == "__main__":
 
                 # Example: Calculate the average lifespan
                 lifespans = []
+                age = None
                 for ind in data.individuals.values():
                     if ind.birth_date and ind.death_date:
+                        age = None
                         try:
                             age = (ind.death_date - ind.birth_date).days / 365.25
                         except (AttributeError, TypeError):
@@ -134,16 +136,22 @@ if __name__ == "__main__":
                 print(" ")
                 print("Example: Print relationships between two individuals")
 
-                # Collect two names from the user
-                # name1 = "Ann"
-                # name2 = "Will"
-                name1 = input("Enter the first name: ")
-                name2 = input("Enter the second name: ")
+                name1, name2, name3, name4 = None, None, None, None
+                if "William Shakespeare" in [ind.full_name for ind in data.individuals.values()]:
+                    name1 = "Susanna" #
+                    name2 = "Hamnet" # brother
+                    name3 = "Edward" # half-brother
+                    name4 = "Annette" # step-sister
+                else:
+                    # Collect two names from the user
+                    name1 = input("Enter the first individual's name: ")
+                    name2 = input("Enter the second individual's name: ")
+
                 print(" ")
 
                 # resolve alias to find the closest matches in all possible names
-                id1, id2 = None, None
-                for name in [name1, name2]:
+                id1, id2, id3, id4 = None, None, None, None
+                for name in [name1, name2, name3, name4]:
                     print("Resolving alias for:", name)
                     result = session.resolve_alias(name)
                     for suggestion in result.get("suggestions", []):
@@ -153,17 +161,34 @@ if __name__ == "__main__":
                     id1 = session.lookup_id_by_alias(name1)
                 if session.alias_matched(name2):
                     id2 = session.lookup_id_by_alias(name2)
+                if name3 and session.alias_matched(name3):
+                    id3 = session.lookup_id_by_alias(name3)
+                if name4 and session.alias_matched(name4):
+                    id4 = session.lookup_id_by_alias(name4)
 
                 ind1 = data.get_individual(id1) if id1 else None
                 ind2 = data.get_individual(id2) if id2 else None
+                ind3 = data.get_individual(id3) if id3 else None
+                ind4 = data.get_individual(id4) if id4 else None
+
                 # Display individuals and their IDs
                 print(f"Best match for '{name1}': {data.display(ind1)}") if ind1 else print(f"No match found for '{name1}'")
                 print(f"Best match for '{name2}': {data.display(ind2)}") if ind2 else print(f"No match found for '{name2}'")
+                if name3:
+                    print(f"Best match for '{name3}': {data.display(ind3)}") if ind3 else print(f"No match found for '{name3}'")
+                if name4:
+                    print(f"Best match for '{name4}': {data.display(ind4)}") if ind4 else print(f"No match found for '{name4}'")
 
                 if ind1 and ind2:
-                    # Display the relationship between the two individuals
+                    # Display the relationship between two individuals
                     relationship = rm.get_relationship(id1, id2)
-                    print(f"Relationship between {ind1.full_name} and {ind2.full_name}: {relationship}")
+                    print(f"\nRelationship between {ind1.full_name} and {ind2.full_name}: {relationship}")
+                if ind1 and ind3:
+                    relationship = rm.get_relationship(id1, id3)
+                    print(f"\nRelationship between {ind1.full_name} and {ind3.full_name}: {relationship}")
+                if ind1 and ind4:
+                    relationship = rm.get_relationship(id1, id4)
+                    print(f"\nRelationship between {ind1.full_name} and {ind4.full_name}: {relationship}")
 
             except Exception as e:
                 print(f"Error analyzing family tree data: {e}")

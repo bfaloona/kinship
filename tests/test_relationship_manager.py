@@ -31,14 +31,25 @@ class TestRelationshipManager(unittest.TestCase):
                                    birth_place='Phoenix, USA', death_date='2050-01-01', death_place='Phoenix, USA'),
             'I011': ind.Individual('I011', 'Great-grandson I010', sex='M', birth_date='2010-02-28',
                                    birth_place='Dallas, USA'),
+            'I998': ind.Individual('I998', 'Daughter I001\'s Husband I998', sex='M', birth_date='2020-02-10',
+                                   birth_place='Austin, USA'),
+            'I997': ind.Individual('I997', 'Great-grandson I998', sex='M', birth_date='2020-02-78',
+                                   birth_place='El Paso, USA'),
         }
 
         self.families = {
-            'F999': f.Family('F999', 'I999', 'Great Grandpa I001', None, None, '1 JAN 1920', [self.individuals['I001']]),
-            'F001': f.Family('F001', 'I001', 'Grandpa I001', 'I002', 'Grandma I002', '1 JAN 1950', [self.individuals['I003'], self.individuals['I004']]),
-            'F002': f.Family('F002', 'I003', 'Son I001', 'I005', 'Son\'s Wife I005', '10 JUN 1980', [self.individuals['I006']]),
-        }
+            'F999': f.Family('F999', 'I999', 'Great Grandpa I001', None, None, '1 JAN 1920',
+                             [self.individuals['I001']]),
+            'F001': f.Family('F001', 'I001', 'Grandpa I001', 'I002', 'Grandma I002', '1 JAN 1950',
+                             [self.individuals['I003'], self.individuals['I004']]),
+            'F002': f.Family('F002', 'I003', 'Son I001', 'I005', 'Son\'s Wife I005', '10 JUN 1980',
+                             [self.individuals['I006']]),
+            'F003': f.Family('F003', 'I998', 'Daughter I001\'s Husband I998', 'I004', 'Daughter I001', '10 JUN 2010',
+                             [self.individuals['I997']]),
+            'F004': f.Family('F004', 'I003', 'Son I001', None, None, '1 JAN 1985',
+                             [self.individuals['I009']]),
 
+        }
         self.relationships = [
             {'Source': 'I999', 'Target': 'I001', 'Relationship': 'parent'},
             {'Source': 'I001', 'Target': 'I003', 'Relationship': 'parent'},
@@ -47,39 +58,95 @@ class TestRelationshipManager(unittest.TestCase):
             {'Source': 'I002', 'Target': 'I004', 'Relationship': 'parent'},
             {'Source': 'I003', 'Target': 'I006', 'Relationship': 'parent'},
             {'Source': 'I005', 'Target': 'I006', 'Relationship': 'parent'},
+            {'Source': 'I004', 'Target': 'I997', 'Relationship': 'parent'},
+            {'Source': 'I003', 'Target': 'I009', 'Relationship': 'parent'},
+
             {'Source': 'I001', 'Target': 'I002', 'Relationship': 'spouse'},
+            {'Source': 'I002', 'Target': 'I001', 'Relationship': 'spouse'},
+
+            {'Source': 'I003', 'Target': 'I005', 'Relationship': 'spouse'},
+            {'Source': 'I005', 'Target': 'I003', 'Relationship': 'spouse'},
+
+            {'Source': 'I998', 'Target': 'I004', 'Relationship': 'spouse'},
+            {'Source': 'I004', 'Target': 'I998', 'Relationship': 'parent'},
+
+            {'Source': 'I999', 'Target': 'I004', 'Relationship': 'spouse'},
         ]
 
         data = FamilyTreeData()
         data._load_from_objs(self.individuals, self.families, self.relationships)
         self.manager = rm.RelationshipManager(data)
 
-    def test_get_relationship(self):
+    def test_bfs_ancestors(self):
+        ancestors = self.manager._bfs_ancestors('I003')
+        expected_ancestors = {'I001': 1, 'I002': 1, 'I999': 2}
+        self.assertEqual(expected_ancestors, ancestors)
+
+    def test_bfs_ancestors_no_ancestors(self):
+        ancestors = self.manager._bfs_ancestors('I999')
+        expected_ancestors = {}
+        self.assertEqual(expected_ancestors, ancestors)
+
+    def test_bfs_ancestors_multiple_generations(self):
+        ancestors = self.manager._bfs_ancestors('I006')
+        expected_ancestors = {'I003': 1, 'I005': 1, 'I001': 2, 'I002': 2, 'I999': 3}
+        self.assertEqual(expected_ancestors, ancestors)
+
+    def test_bfs_ancestors_with_spouse(self):
+        ancestors = self.manager._bfs_ancestors('I004')
+        expected_ancestors = {'I001': 1, 'I002': 1, 'I999': 2}
+        self.assertEqual(expected_ancestors, ancestors)
+
+    def test_bfs_ancestors_with_invalid_id(self):
+        ancestors = self.manager._bfs_ancestors('INVALID_ID')
+        expected_ancestors = {}
+        self.assertEqual(expected_ancestors, ancestors)
+
+    def test_get_relationship_father(self):
         self.assertEqual(self.manager.get_relationship('I001', 'I003'), 'father')
+
+    def test_get_relationship_child(self):
         self.assertEqual(self.manager.get_relationship('I003', 'I001'), 'child')
+
+    def test_get_relationship_grandfather(self):
         self.assertEqual(self.manager.get_relationship('I001', 'I006'), 'grandfather')
 
-    def test_get_parents(self):
+    def test_get_relationship_parents(self):
         parents = self.manager.get_relationship('I003', 'I001')
         self.assertEqual(parents, 'child')
 
-    def test_get_children(self):
+    def test_get_parents(self):
+        parents = self.manager.data.get_parents('I003')
+        self.assertEqual({'I001', 'I002'}, set(parents))
+
+    def test_get_relationship_children(self):
         children = self.manager.get_relationship('I001', 'I003')
         self.assertEqual(children, 'father')
 
-    def test_spousal_relationship(self):
+    def test_get_relationship_spouse(self):
         spouses = self.manager.get_relationship('I001', 'I002')
         self.assertEqual(spouses, 'spouse')
         # inverted
         spouses = self.manager.get_relationship('I002', 'I001')
         self.assertEqual(spouses, 'spouse')
 
+    def test_get_relationship_cousin(self):
+        spouses = self.manager.get_relationship('I006', 'I997')
+        self.assertEqual(spouses, '1th cousin')
+
+    def test_bfs_ancestors_biological(self):
+        ancestors = self.manager._bfs_ancestors('I006')
+        expected_ancestors = {'I003': 1, 'I005': 1, 'I001': 2, 'I002': 2, 'I999': 3}
+        self.assertEqual(expected_ancestors, ancestors)
+
+    def test_get_relationship_half_siblings(self):
+        self.assertEqual(self.manager.get_relationship('I006', 'I009'), 'half-sibling')
+
+    def test_get_relationship_step_siblings(self):
+        self.assertEqual(self.manager.get_relationship('I006', 'I008'), 'step-sibling')
+
     def test_invalid_relationship(self):
         self.assertEqual(self.manager.get_relationship('I003', 'I010'), 'No relationship found.')
-
-    def test_deprecated_method_stub(self):
-        with self.assertRaises(NotImplementedError):
-            self.manager.old_method_stub()
 
 if __name__ == '__main__':
     unittest.main()

@@ -84,7 +84,7 @@ class FamilyTreeData:
 
 
 
-    def get_individual(self, individual_id):
+    def get_individual(self, individual_id) -> Individual:
         """
         Retrieve details of an individual by ID.
         """
@@ -95,6 +95,20 @@ class FamilyTreeData:
         Retrieve details of a family by ID.
         """
         return self.families.get(family_id)
+
+    def get_parents(self, individual_id) -> list:
+        """
+        Retrieve IDs of parents.
+        """
+        parents = []
+        for family in self.families.values():
+            if self.get_individual(individual_id) in family.children:
+                if family.husband_id:
+                    parents.extend([family.husband_id])
+                if family.wife_id:
+                    parents.extend([family.wife_id])
+        return parents
+
 
     def get_relationships(self, individual_id):
         """
