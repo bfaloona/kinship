@@ -1,18 +1,78 @@
-from typing import Dict, List, Tuple, Final
+from typing import List, Tuple
 from collections import defaultdict, deque
+from .family_tree_data import FamilyTreeData
 
 class RelationshipManager:
-    def __init__(self, data):
-        """
-        Initialize the RelationshipManager with family tree data.
-        Data should include individuals, families, and relationships.
-        """
-        self.individuals: Final = data.individuals
-        self.families: Final = data.families
-        self.relationships: Final = data.relationships
+    def __init__(self, data: FamilyTreeData):
         self.data = data
-        self.relationship_graph = self._build_relationship_graph()
+        self.individuals = data.individuals  # Dictionary of individuals keyed by their ID
+        self.families = data.families  # Dictionary of families keyed by their ID
+        self.relationship_graph = {}
+        self._build_relationship_graph()
 
+    def _build_relationship_graph(self) -> None:
+        """
+        Build the relationship graph dynamically by integrating logic from the deprecated
+        GedcomParser.build_relationships() method.
+        """
+        for individual in self.individuals:
+            self.relationship_graph[individual] = []
+
+        # Iterate through all families to establish parent-child and spousal relationships
+        for family_id, family in self.families.items():
+            spouses = [family.husband_id] if family.husband_id else []
+            if family.wife_id:
+                spouses.append(family.wife_id)
+            children = [child.id for child in family.children]
+
+            # Create spousal relationships
+            if len(spouses) == 2:
+                self._add_relationship(spouses[0], spouses[1], "spouse")
+                self._add_relationship(spouses[1], spouses[0], "spouse")
+
+            # Create parent-child relationships
+            for parent in spouses:
+                for child in children:
+                    self._add_relationship(parent, child, "parent")
+                    self._add_relationship(child, parent, "child")
+
+        # Iterate through individuals to identify sibling and half-sibling relationships
+        for family_id, family in self.families.items():
+            for i, child1 in enumerate(family.children):
+                for child2 in family.children[i + 1:]:
+                    self._add_relationship(child1.id, child2.id, "sibling")
+                    self._add_relationship(child2.id, child1.id, "sibling")
+
+        # Add support for half-sibling relationships
+        self._add_half_sibling_relationships()
+
+    def _add_relationship(self, individual1: str, individual2: str, relationship_type: str) -> None:
+        """
+        Helper method to add a relationship to the graph.
+        """
+        if individual1 not in self.relationship_graph:
+            self.relationship_graph[individual1] = []
+        self.relationship_graph[individual1].append((individual2, relationship_type))
+
+    def _add_half_sibling_relationships(self):
+        """
+        Identify and add half-sibling relationships based on shared parents.
+        """
+        for family in self.families.values():
+            parents = family.get_parents()
+
+            # Iterate through each pair of parents to identify half-siblings
+            for i, parent1 in enumerate(parents):
+                for parent2 in parents[i + 1:]:
+                    shared_children = set(self.relationship_graph[parent1]["child"]).intersection(
+                        self.relationship_graph[parent2]["child"]
+                    )
+
+                    # Mark individuals as half-siblings
+                    for child1 in shared_children:
+                        for child2 in shared_children:
+                            if child1 != child2:
+                                self._add_relationship(child1, child2, "half-sibling")
     def _inverse_relationship(self, relation_type: str) -> str:
         """
         Returns the inverse of a relationship type.
@@ -31,34 +91,6 @@ class RelationshipManager:
             "step-sibling": "step-sibling",
         }
         return inverses.get(relation_type, "unknown")
-
-    def _build_relationship_graph(self) -> Dict[str, List[Tuple[str, str]]]:
-        """
-        Constructs a graph where nodes are individual IDs, and edges are labeled relationships.
-        Example: {"A": [("B", "parent"), ("C", "sibling")]}.
-        """
-        graph = defaultdict(list)
-
-        for relation in self.relationships:
-            person_a, person_b, relation_type = relation.values()
-            graph[person_a].append((person_b, relation_type))
-            graph[person_b].append((person_a, self._inverse_relationship(relation_type)))
-
-        # Add half-sibling and step-sibling relationships
-        for family in self.families.values():
-            children = family.children
-            for i in range(len(children)):
-                for j in range(i + 1, len(children)):
-                    child_a = children[i]
-                    child_b = children[j]
-                    if self.data.get_parents(child_a) != self.data.get_parents(child_b):
-                        graph[child_a].append((child_b, "half-sibling"))
-                        graph[child_b].append((child_a, "half-sibling"))
-                    elif family.husband_id and family.wife_id:
-                        graph[child_a].append((child_b, "step-sibling"))
-                        graph[child_b].append((child_a, "step-sibling"))
-
-        return graph
 
     def get_relationship(self, subject_id: str, target_id: str) -> str:
         """
@@ -172,7 +204,7 @@ class RelationshipManager:
             dict: A dictionary where keys are ancestor IDs and values are their respective
                   distances from the given individual.
         """
-        from collections import deque, defaultdict
+        from collections import deque
 
         ancestors = defaultdict(int)
         queue = deque([(individual_id, 0)])
@@ -203,9 +235,3 @@ class RelationshipManager:
         removal = abs(distance_a - distance_b)
         cousin_level = min(distance_a, distance_b) - 1
         return f"{cousin_level}th cousin {removal} times removed"
-
-    def old_method_stub(self, *args, **kwargs):
-        """
-        Placeholder for deprecated methods to maintain compatibility.
-        """
-        raise NotImplementedError("This method has been deprecated. Please use the new API.")
