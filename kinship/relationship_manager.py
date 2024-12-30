@@ -7,7 +7,7 @@ class RelationshipManager:
         self.data = data
         self.individuals = data.individuals  # Dictionary of individuals keyed by their ID
         self.families = data.families  # Dictionary of families keyed by their ID
-        self.relationship_graph: Dict[str, Dict[str, Set[str]]] = defaultdict(lambda: defaultdict(set))
+        self.relationship_graph: Dict[str, Dict[str, Set[str]]] = {}
         self._build_relationship_graph()
 
     def _build_relationship_graph(self) -> None:
@@ -15,15 +15,25 @@ class RelationshipManager:
         Build the relationship graph dynamically by integrating logic from the deprecated
         GedcomParser.build_relationships() method.
         """
-        for individual in self.individuals:
-            self.relationship_graph[individual] = defaultdict(set)
+        for individual_id in self.individuals:
+            self.relationship_graph[individual_id] = {
+                "spouse": set(),
+                "parent": set(),
+                "child": set(),
+                "sibling": set(),
+                "half-sibling": set(),
+                "step-sibling": set(),
+                "step-parent": set(),
+                "step-child": set()
+            }
+
 
         # Iterate through all families to establish parent-child and spousal relationships
         for family_id, family in self.families.items():
             spouses = [family.husband_id] if family.husband_id else []
             if family.wife_id:
                 spouses.append(family.wife_id)
-            children = [child.id for child in family.children]
+            children = [child_id for child_id in family.children]
 
             # Create spousal relationships
             if len(spouses) == 2:
@@ -31,17 +41,17 @@ class RelationshipManager:
                 self._add_relationship(spouses[1], spouses[0], "spouse")
 
             # Create parent-child relationships
-            for parent in spouses:
-                for child in children:
-                    self._add_relationship(parent, child, "parent")
-                    self._add_relationship(child, parent, "child")
+            for parent_id in spouses:
+                for child_id in children:
+                    self._add_relationship(parent_id, child_id, "parent")
+                    self._add_relationship(child_id, parent_id, "child")
 
         # Iterate through individuals to identify sibling and half-sibling relationships
         for family_id, family in self.families.items():
-            for i, child1 in enumerate(family.children):
-                for child2 in family.children[i + 1:]:
-                    self._add_relationship(child1.id, child2.id, "sibling")
-                    self._add_relationship(child2.id, child1.id, "sibling")
+            for i, child1_id in enumerate(family.children):
+                for child2_id in family.children[i + 1:]:
+                    self._add_relationship(child1_id, child2_id, "sibling")
+                    self._add_relationship(child2_id, child1_id, "sibling")
 
         # Add support for half-sibling relationships
         self._add_half_sibling_relationships()

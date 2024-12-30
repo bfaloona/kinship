@@ -1,6 +1,5 @@
 from typing import List
 from .util import normalize_id, date_string
-from .individual import Individual
 
 class Family:
     def __init__(
@@ -11,7 +10,7 @@ class Family:
         wife_id=None,
         wife_name=None,
         marr_date: str = None,
-        children: List[Individual] = None,
+        children: List[str] = None,
     ):
         self.id = normalize_id(id)
         self.husband_name = husband_name if husband_name else None

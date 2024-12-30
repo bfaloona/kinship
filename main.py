@@ -28,14 +28,12 @@ if __name__ == "__main__":
             data.load_from_gedcom(parser)
             parser.write_individuals()
             parser.write_families()
-            parser.write_relationships()
             print("Parsing and CSV generation completed successfully!")
 
         elif command == "load":
             data = FamilyTreeData()
             data.load_individuals_from_csv(os.path.join(sys.argv[2], "individuals.csv"))
             data.load_families_from_csv(os.path.join(sys.argv[2], "families.csv"))
-            data.load_relationships_from_csv(os.path.join(sys.argv[2], "relationships.csv"))
             # TODO Add simplest validation here
             print("Data loaded from processed files successfully!")
 
@@ -50,7 +48,6 @@ if __name__ == "__main__":
                 # Calculate basic size stats
                 num_individuals = len(data.individuals)
                 num_families = len(data.families)
-                num_relationships = len(data.relationships)
 
                 # Calculate stats on generations (if available)
                 generations = [ind.get('generation') for ind in data.individuals if 'generation' in ind]
@@ -60,15 +57,21 @@ if __name__ == "__main__":
                 else:
                     avg_generation = median_generation = None
 
-                # Analyze number of relationships per individual
-                source_counts = Counter(rel['Source'] for rel in data.relationships)
-                target_counts = Counter(rel['Target'] for rel in data.relationships)
-                relationship_counts = source_counts + target_counts
-                most_connected = relationship_counts.most_common(1)
-                if most_connected:
-                    most_connected_id, most_connections = most_connected[0]
-                else:
-                    most_connected_id = most_connections = None
+                # Statistics, data shape and outliers in rm.relationship_graph data
+                num_relationships = sum(len(relations) for relations in rm.relationship_graph.values())
+                most_connected_id = max(rm.relationship_graph, key=lambda x: len(rm.relationship_graph[x]))
+                most_connections = len(rm.relationship_graph[most_connected_id])
+                step_connections = sum(len(relations['step-sibling']) +
+                                       len(relations['step-parent']) +
+                                       len(relations['step-child'])
+                                       for relations in rm.relationship_graph.values())
+                half_connections = sum(len(relations['half-sibling']) for relations in rm.relationship_graph.values())
+
+                print(f"Total number of step relationships: {step_connections}")
+                print(f"Total number of half relationships: {half_connections}")
+                print(f"Most connected individual: {most_connected_id} with {most_connections} connections")
+                print(f"Total number of relationships: {num_relationships} ({num_relationships/num_individuals} relationships each for {num_individuals} individuals)")
+
 
                 # Identify any outliers in family size
                 family_sizes = [len(family['members']) for family in data.families if 'members' in family]
@@ -152,10 +155,11 @@ if __name__ == "__main__":
                 # resolve alias to find the closest matches in all possible names
                 id1, id2, id3, id4 = None, None, None, None
                 for name in [name1, name2, name3, name4]:
-                    print("Resolving alias for:", name)
-                    result = session.resolve_alias(name)
-                    for suggestion in result.get("suggestions", []):
-                        print(f"  '{suggestion['name']}' (confidence: {suggestion['confidence']})")
+                    if name:
+                        print("Resolving alias for:", name)
+                        result = session.resolve_alias(name)
+                        for suggestion in result.get("suggestions", []):
+                            print(f"  '{suggestion['name']}' (confidence: {suggestion['confidence']})")
 
                 if session.alias_matched(name1):
                     id1 = session.lookup_id_by_alias(name1)

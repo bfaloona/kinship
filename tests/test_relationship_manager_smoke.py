@@ -14,7 +14,7 @@ class TestRelationshipManagerSmoke(unittest.TestCase):
             "I004": Individual(id="I004", full_name="Child Two", sex="F", birth_date="2002-04-04")
         }
         self.families = {
-            "F001": Family(id="F001", husband_id="I001", wife_id="I002", children=[self.individuals["I003"], self.individuals["I004"]])
+            "F001": Family(id="F001", husband_id="I001", wife_id="I002", children=["I003", "I004"])
         }
         self.data = FamilyTreeData()
         self.data.individuals = self.individuals
@@ -24,10 +24,10 @@ class TestRelationshipManagerSmoke(unittest.TestCase):
     def test_build_relationship_graph(self):
         self.manager._build_relationship_graph()
         expected_graph = {
-            "I001": {"spouse": {"I002"}, "parent": {"I003", "I004"}, "child": set(), "sibling": set()},
-            "I002": {"spouse": {"I001"}, "parent": {"I003", "I004"}, "child": set(), "sibling": set()},
-            "I003": {"child": {"I001", "I002"}, "sibling": {"I004"}, "parent": set(), "spouse": set()},
-            "I004": {"child": {"I001", "I002"}, "sibling": {"I003"}, "parent": set(), "spouse": set()}
+            "I001": {"spouse": {"I002"}, "parent": {"I003", "I004"}, "child": set(), "sibling": set(), "half-sibling": set(), "step-sibling": set(), "step-parent": set(), "step-child": set()},
+            "I002": {"spouse": {"I001"}, "parent": {"I003", "I004"}, "child": set(), "sibling": set(), "half-sibling": set(), "step-sibling": set(), "step-parent": set(), "step-child": set()},
+            "I003": {"child": {"I001", "I002"}, "sibling": {"I004"}, "parent": set(), "spouse": set(), "half-sibling": set(), "step-sibling": set(), "step-parent": set(), "step-child": set()},
+            "I004": {"child": {"I001", "I002"}, "sibling": {"I003"}, "parent": set(), "spouse": set(), "half-sibling": set(), "step-sibling": set(), "step-parent": set(), "step-child": set()}
         }
         self.assertEqual(expected_graph, self.manager.relationship_graph)
 

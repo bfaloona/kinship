@@ -37,8 +37,8 @@ def test_parse_family(mock_parser):
     assert family.wife_id == "I2"
     assert family.marr_date == "1990-01-01"
     assert len(family.children) == 2
-    assert family.children[0].id == "I3"
-    assert family.children[1].id == "I4"
+    assert family.children[0] == "I3"
+    assert family.children[1] == "I4"
 
 def test_parse_family_no_children(mock_parser):
     mock_family = MagicMock()
@@ -75,4 +75,4 @@ def test_parse_family_no_marriage_date(mock_parser):
     assert family.wife_id == "I2"
     assert family.marr_date == ''
     assert len(family.children) == 1
-    assert family.children[0].id == "I3"
+    assert family.children[0] == "I3"
