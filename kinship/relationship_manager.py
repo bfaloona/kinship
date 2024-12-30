@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Set
 from collections import defaultdict, deque
 from .family_tree_data import FamilyTreeData
 
@@ -7,7 +7,7 @@ class RelationshipManager:
         self.data = data
         self.individuals = data.individuals  # Dictionary of individuals keyed by their ID
         self.families = data.families  # Dictionary of families keyed by their ID
-        self.relationship_graph = {}
+        self.relationship_graph: Dict[str, Dict[str, Set[str]]] = defaultdict(lambda: defaultdict(set))
         self._build_relationship_graph()
 
     def _build_relationship_graph(self) -> None:
@@ -16,7 +16,7 @@ class RelationshipManager:
         GedcomParser.build_relationships() method.
         """
         for individual in self.individuals:
-            self.relationship_graph[individual] = []
+            self.relationship_graph[individual] = defaultdict(set)
 
         # Iterate through all families to establish parent-child and spousal relationships
         for family_id, family in self.families.items():
@@ -50,9 +50,7 @@ class RelationshipManager:
         """
         Helper method to add a relationship to the graph.
         """
-        if individual1 not in self.relationship_graph:
-            self.relationship_graph[individual1] = []
-        self.relationship_graph[individual1].append((individual2, relationship_type))
+        self.relationship_graph[individual1][relationship_type].add(individual2)
 
     def _add_half_sibling_relationships(self):
         """
@@ -73,6 +71,7 @@ class RelationshipManager:
                         for child2 in shared_children:
                             if child1 != child2:
                                 self._add_relationship(child1, child2, "half-sibling")
+
     def _inverse_relationship(self, relation_type: str) -> str:
         """
         Returns the inverse of a relationship type.
@@ -125,9 +124,10 @@ class RelationshipManager:
             if current in visited:
                 continue
             visited.add(current)
-            for neighbor, relationship in self.relationship_graph[current]:
-                if neighbor not in visited:
-                    queue.append((neighbor, path + [(current, relationship)]))
+            for relationship, neighbors in self.relationship_graph[current].items():
+                for neighbor in neighbors:
+                    if neighbor not in visited:
+                        queue.append((neighbor, path + [(current, relationship)]))
 
         return []
 
@@ -178,34 +178,21 @@ class RelationshipManager:
         Find the most recent common ancestor and distances from it for two individuals.
         Returns a tuple of (common_ancestor_id, distance_to_a, distance_to_b).
         """
-        print(f"_find_common_ancestor() called with a: {self.data.get_individual(person_a).full_name} b: {self.data.get_individual(person_b).full_name}")
         visited_a = self._bfs_ancestors(person_a)
-        print(f"    a: {visited_a}")
         visited_b = self._bfs_ancestors(person_b)
-        print(f"    b: {visited_b}")
 
         common_ancestors = set(visited_a.keys()).intersection(visited_b.keys())
-        print(f"    common_ancestors: {common_ancestors}")
         if not common_ancestors:
             return None, -1, -1
 
         closest_ancestor = min(common_ancestors, key=lambda ancestor: visited_a[ancestor] + visited_b[ancestor])
-        print("    closest_ancestor: ", closest_ancestor)
         return closest_ancestor, visited_a[closest_ancestor], visited_b[closest_ancestor]
 
-    def _bfs_ancestors(self, individual_id):
+    def _bfs_ancestors(self, individual_id: str) -> Dict[str, int]:
         """
         Perform a breadth-first search (BFS) to find all ancestors of a given individual.
-
-        Args:
-            individual_id (str): The ID of the individual whose ancestors are to be found.
-
-        Returns:
-            dict: A dictionary where keys are ancestor IDs and values are their respective
-                  distances from the given individual.
+        Returns a dictionary where keys are ancestor IDs and values are their respective distances from the given individual.
         """
-        from collections import deque
-
         ancestors = defaultdict(int)
         queue = deque([(individual_id, 0)])
         visited = set()
@@ -225,6 +212,7 @@ class RelationshipManager:
                     queue.append((parent, distance + 1))
 
         return dict(ancestors)
+
     def _determine_cousinship(self, distance_a: int, distance_b: int) -> str:
         """
         Calculate the cousinship and removal based on ancestor distances.

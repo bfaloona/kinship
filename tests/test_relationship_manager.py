@@ -140,7 +140,7 @@ class TestRelationshipManager(unittest.TestCase):
         self.assertEqual(expected_ancestors, ancestors)
 
     def test_get_relationship_half_siblings(self):
-        self.assertEqual(self.manager.get_relationship('I006', 'I009'), 'half-sibling')
+        self.assertEqual('half-sibling', self.manager.get_relationship('I006', 'I009'))
 
     def test_get_relationship_step_siblings(self):
         self.assertEqual(self.manager.get_relationship('I006', 'I008'), 'step-sibling')
