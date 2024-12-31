@@ -50,7 +50,7 @@ if __name__ == "__main__":
                 num_families = len(data.families)
 
                 # Calculate stats on generations (if available)
-                generations = [ind.get('generation') for ind in data.individuals if 'generation' in ind]
+                generations = [ind.generation for ind in data.individuals.values() if hasattr(ind, 'generation')]
                 if generations:
                     avg_generation = mean(generations)
                     median_generation = median(generations)
@@ -58,36 +58,30 @@ if __name__ == "__main__":
                     avg_generation = median_generation = None
 
                 # Statistics, data shape and outliers in rm.relationship_graph data
-                num_relationships = sum(len(relations) for relations in rm.relationship_graph.values())
-                most_connected_id = max(rm.relationship_graph, key=lambda x: len(rm.relationship_graph[x]))
-                most_connections = len(rm.relationship_graph[most_connected_id])
-                step_connections = sum(len(relations['step-sibling']) +
-                                       len(relations['step-parent']) +
-                                       len(relations['step-child'])
-                                       for relations in rm.relationship_graph.values())
-                half_connections = sum(len(relations['half-sibling']) for relations in rm.relationship_graph.values())
+                num_relationships = rm.relationship_graph.number_of_edges()
+                most_connected_id = max(rm.relationship_graph, key=lambda x: rm.relationship_graph.degree(x))
+                most_connections = rm.relationship_graph.degree(most_connected_id)
+                step_connections = sum(1 for u, v, data in rm.relationship_graph.edges(data=True) if
+                                       data.get('relationship') in ['step-sibling', 'step-parent', 'step-child'])
+                half_connections = sum(1 for u, v, data in rm.relationship_graph.edges(data=True) if
+                                       data.get('relationship') == 'half-sibling')
 
                 print(f"Total number of step relationships: {step_connections}")
                 print(f"Total number of half relationships: {half_connections}")
                 print(f"Most connected individual: {most_connected_id} with {most_connections} connections")
-                print(f"Total number of relationships: {num_relationships} ({num_relationships/num_individuals} relationships each for {num_individuals} individuals)")
-
+                print(f"Total number of relationships: {num_relationships}")
 
                 # Identify any outliers in family size
-                family_sizes = [len(family['members']) for family in data.families if 'members' in family]
+                family_sizes = [len(family.members) for family in data.families.values() if hasattr(family, 'members')]
                 avg_family_size = mean(family_sizes) if family_sizes else None
-                outliers = [size for size in family_sizes if
-                            size > (avg_family_size * 1.5)] if avg_family_size else []
+                outliers = [size for size in family_sizes if size > (avg_family_size * 1.5)] if avg_family_size else []
 
                 # Print results
                 print(f"Number of individuals: {num_individuals}")
                 print(f"Number of families: {num_families}")
-                print(f"Number of relationships: {num_relationships}")
                 if avg_generation:
                     print(f"Average generation: {avg_generation}")
                     print(f"Median generation: {median_generation}")
-                if most_connected_id:
-                    print(f"Most connected individual: {most_connected_id} with {most_connections} connections")
                 if outliers:
                     print(f"Outliers in family size: {outliers}")
 
@@ -108,24 +102,28 @@ if __name__ == "__main__":
 
                 # Example: Find the oldest and youngest individuals
                 individuals_by_birth_date = sorted(data.individuals.values(), key=lambda ind: ind.birth_date)
-                oldest_individual = individuals_by_birth_date[0]
-                youngest_individual = individuals_by_birth_date[-1]
-                print(f"Oldest individual: {oldest_individual.full_name} (born {oldest_individual.birth_date})")
-                print(f"Youngest individual: {youngest_individual.full_name} (born {youngest_individual.birth_date})")
+                oldest_individual = individuals_by_birth_date[0] if individuals_by_birth_date else None
+                youngest_individual = individuals_by_birth_date[-1] if individuals_by_birth_date else None
+                if oldest_individual:
+                    print(f"Oldest individual: {oldest_individual.full_name} (born {oldest_individual.birth_date})")
+                else:
+                    print("No individuals found to determine the oldest individual.")
+                if youngest_individual:
+                    print(
+                        f"Youngest individual: {youngest_individual.full_name} (born {youngest_individual.birth_date})")
+                else:
+                    print("No individuals found to determine the youngest individual.")
 
                 # Example: Calculate the average lifespan
                 lifespans = []
-                age = None
                 for ind in data.individuals.values():
                     if ind.birth_date and ind.death_date:
-                        age = None
                         try:
                             age = (ind.death_date - ind.birth_date).days / 365.25
+                            lifespans.append(age)
                         except (AttributeError, TypeError):
-                            age = None
-                    lifespans.append(age) if age else None
+                            continue
                 average_lifespan = mean(lifespans) if lifespans else None
-
                 print(
                     f"Average lifespan: {average_lifespan:.2f} years" if average_lifespan else "Average lifespan: N/A")
 
@@ -135,8 +133,10 @@ if __name__ == "__main__":
                 if most_common_first_name:
                     print(
                         f"Most common first name: {most_common_first_name[0][0]} (count: {most_common_first_name[0][1]})")
-
+                else:
+                    print("No common first name found.")
                 print(" ")
+
                 print("Example: Print relationships between two individuals")
 
                 name1, name2, name3, name4 = None, None, None, None
@@ -185,13 +185,13 @@ if __name__ == "__main__":
 
                 if ind1 and ind2:
                     # Display the relationship between two individuals
-                    relationship = rm.get_relationship(id1, id2)
+                    relationship = rm.display_relationship(id1, id2)
                     print(f"\nRelationship between {ind1.full_name} and {ind2.full_name}: {relationship}")
                 if ind1 and ind3:
-                    relationship = rm.get_relationship(id1, id3)
+                    relationship = rm.display_relationship(id1, id3)
                     print(f"\nRelationship between {ind1.full_name} and {ind3.full_name}: {relationship}")
                 if ind1 and ind4:
-                    relationship = rm.get_relationship(id1, id4)
+                    relationship = rm.display_relationship(id1, id4)
                     print(f"\nRelationship between {ind1.full_name} and {ind4.full_name}: {relationship}")
 
             except Exception as e:

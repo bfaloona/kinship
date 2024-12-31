@@ -42,3 +42,25 @@ def test_load_from_objs():
 
     assert data.individuals == individuals
     assert data.families == families
+
+def test_get_father(mock_family_tree_data):
+    father = mock_family_tree_data.get_husband('I3')
+    assert father == 'I1'
+
+def test_get_mother(mock_family_tree_data):
+    mother = mock_family_tree_data.get_wife('I3')
+    assert mother == 'I2'
+
+def test_get_siblings(mock_family_tree_data):
+    siblings = mock_family_tree_data.get_siblings('I3')
+    assert siblings == {'I4'}
+
+def test_get_parents(mock_family_tree_data):
+    parents = mock_family_tree_data.get_parents('I3')
+    assert parents == {'I1', 'I2'}
+
+def test_verify_integrity(mock_family_tree_data):
+    try:
+        mock_family_tree_data.verify_integrity()
+    except ValueError as e:
+        pytest.fail(f"Integrity check failed: {e}")

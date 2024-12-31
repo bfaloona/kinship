@@ -5,31 +5,36 @@ from kinship.individual import Individual
 from kinship.family import Family
 
 class TestRelationshipManagerSmoke(unittest.TestCase):
+
     def setUp(self):
-        # Sample data for testing
-        self.individuals = {
-            "I001": Individual(id="I001", full_name="John Doe", sex="M", birth_date="1970-01-01"),
-            "I002": Individual(id="I002", full_name="Jane Doe", sex="F", birth_date="1972-02-02"),
-            "I003": Individual(id="I003", full_name="Child One", sex="M", birth_date="2000-03-03"),
-            "I004": Individual(id="I004", full_name="Child Two", sex="F", birth_date="2002-04-04")
+        # Minimal family tree for smoke test
+        individuals = {
+            'I001': Individual('I001', 'Father', sex='M'),
+            'I002': Individual('I002', 'Mother', sex='F'),
+            'I003': Individual('I003', 'Child1', sex='M'),
+            'I004': Individual('I004', 'Child2', sex='F')
         }
-        self.families = {
-            "F001": Family(id="F001", husband_id="I001", wife_id="I002", children=["I003", "I004"])
+        families = {
+            'F001': Family('F001', husband_id='I001', wife_id='I002', children=['I003', 'I004'])
         }
-        self.data = FamilyTreeData()
-        self.data.individuals = self.individuals
-        self.data.families = self.families
-        self.manager = RelationshipManager(self.data)
+        data = FamilyTreeData()
+        data._load_from_objs(individuals, families)
+        self.manager = RelationshipManager(data)
 
-    def test_build_relationship_graph(self):
-        self.manager._build_relationship_graph()
-        expected_graph = {
-            "I001": {"spouse": {"I002"}, "parent": {"I003", "I004"}, "child": set(), "sibling": set(), "half-sibling": set(), "step-sibling": set(), "step-parent": set(), "step-child": set()},
-            "I002": {"spouse": {"I001"}, "parent": {"I003", "I004"}, "child": set(), "sibling": set(), "half-sibling": set(), "step-sibling": set(), "step-parent": set(), "step-child": set()},
-            "I003": {"child": {"I001", "I002"}, "sibling": {"I004"}, "parent": set(), "spouse": set(), "half-sibling": set(), "step-sibling": set(), "step-parent": set(), "step-child": set()},
-            "I004": {"child": {"I001", "I002"}, "sibling": {"I003"}, "parent": set(), "spouse": set(), "half-sibling": set(), "step-sibling": set(), "step-parent": set(), "step-child": set()}
-        }
-        self.assertEqual(expected_graph, self.manager.relationship_graph)
+    def test_parent_child_graph(self):
+        self.assertEqual('parent-child', self.manager.relationship_graph['I001']['I003']['relationship'])
+        self.assertEqual('parent-child', self.manager.relationship_graph['I003']['I001']['relationship'])
 
-if __name__ == "__main__":
+    def test_parent_relationships(self):
+        self.assertEqual('parent', self.manager.get_relationship('I001', 'I003'))
+
+    def test_child_relationships(self):
+        self.assertEqual('child', self.manager.get_relationship('I003', 'I001'))
+        self.assertEqual('child', self.manager.get_relationship('I004', 'I002'))
+
+    def test_invalid_id_relationship(self):
+        with self.assertRaises(ValueError):
+            self.manager.display_relationship('I003', 'BAD_ID')
+
+if __name__ == '__main__':
     unittest.main()

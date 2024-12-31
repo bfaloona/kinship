@@ -1,235 +1,218 @@
-from typing import List, Tuple, Dict, Set
-from collections import defaultdict, deque
-from .family_tree_data import FamilyTreeData
+import networkx as nx
 
 class RelationshipManager:
-    def __init__(self, data: FamilyTreeData):
-        self.data = data
-        self.individuals = data.individuals  # Dictionary of individuals keyed by their ID
-        self.families = data.families  # Dictionary of families keyed by their ID
-        self.relationship_graph: Dict[str, Dict[str, Set[str]]] = {}
+    def __init__(self, family_tree_data):
+        if family_tree_data is None:
+            raise ValueError("Family tree data cannot be None.")
+        self.data = family_tree_data
+        self.relationship_graph = nx.Graph()
         self._build_relationship_graph()
+        self.validate_core_relationships()
 
-    def _build_relationship_graph(self) -> None:
+    def _build_relationship_graph(self):
+        # Populate relationship_graph with initial data
+        for family_id, family in self.data.families.items():
+            if family is None:
+                continue
+
+            parents = [family.husband_id, family.wife_id]
+            parents = [p for p in parents if p is not None]  # Filter out None values
+            children = family.children if family.children else []
+
+            # Add parent-child relationships (undirected)
+            for parent in parents:
+                for child in children:
+                    self.relationship_graph.add_edge(parent, child, relationship='parent-child')
+
+            # Add sibling relationships
+            for i, child1 in enumerate(children):
+                for child2 in children[i + 1:]:
+                    self.relationship_graph.add_edge(child1, child2, relationship='sibling')
+
+            # Add spousal relationships
+            if len(parents) == 2:
+                self.relationship_graph.add_edge(parents[0], parents[1], relationship='spouse')
+
+    def _find_shared_parent(self, reference, related_to):
+        reference_parents = set(self.data.get_parents(reference) or [])
+        related_to_parents = set(self.data.get_parents(related_to) or [])
+        return reference_parents.intersection(related_to_parents)
+
+    def get_half_siblings(self, reference):
+        half_siblings = []
+        reference_parents = set(self.data.get_parents(reference) or [])
+        if not reference_parents:
+            return half_siblings
+
+        for sibling in self.data.get_all_siblings(reference):
+            shared_parents = self._find_shared_parent(reference, sibling)
+            if len(shared_parents) == 1:  # Exactly one shared parent
+                half_siblings.append(sibling)
+        return half_siblings
+
+    def get_step_siblings(self, reference):
+        step_siblings = []
+        parents = self.data.get_parents(reference) or []
+        for parent in parents:
+            for spouse in self.data.get_spouses(parent):
+                if not spouse:
+                    continue
+
+                spouse_children = self.data.get_children(spouse) or []
+                for child in spouse_children:
+                    if child != reference and child not in self.data.get_siblings(reference):
+                        step_siblings.append(child)
+        return step_siblings
+
+    def get_step_parents(self, reference):
+        step_parents = []
+        parents = self.data.get_parents(reference) or []
+        for parent in parents:
+            for spouse in self.data.get_spouses(parent):
+                if not spouse:
+                    continue
+                if spouse not in parents:
+                    step_parents.append(spouse)
+        return step_parents
+
+    def _bfs_to_ancestors(self, individual):
         """
-        Build the relationship graph dynamically by integrating logic from the deprecated
-        GedcomParser.build_relationships() method.
+        Perform BFS to find ancestors and their generation distances.
         """
-        for individual_id in self.individuals:
-            self.relationship_graph[individual_id] = {
-                "spouse": set(),
-                "parent": set(),
-                "child": set(),
-                "sibling": set(),
-                "half-sibling": set(),
-                "step-sibling": set(),
-                "step-parent": set(),
-                "step-child": set()
-            }
-
-
-        # Iterate through all families to establish parent-child and spousal relationships
-        for family_id, family in self.families.items():
-            spouses = [family.husband_id] if family.husband_id else []
-            if family.wife_id:
-                spouses.append(family.wife_id)
-            children = [child_id for child_id in family.children]
-
-            # Create spousal relationships
-            if len(spouses) == 2:
-                self._add_relationship(spouses[0], spouses[1], "spouse")
-                self._add_relationship(spouses[1], spouses[0], "spouse")
-
-            # Create parent-child relationships
-            for parent_id in spouses:
-                for child_id in children:
-                    self._add_relationship(parent_id, child_id, "parent")
-                    self._add_relationship(child_id, parent_id, "child")
-
-        # Iterate through individuals to identify sibling and half-sibling relationships
-        for family_id, family in self.families.items():
-            for i, child1_id in enumerate(family.children):
-                for child2_id in family.children[i + 1:]:
-                    self._add_relationship(child1_id, child2_id, "sibling")
-                    self._add_relationship(child2_id, child1_id, "sibling")
-
-        # Add support for half-sibling relationships
-        self._add_half_sibling_relationships()
-
-    def _add_relationship(self, individual1: str, individual2: str, relationship_type: str) -> None:
-        """
-        Helper method to add a relationship to the graph.
-        """
-        self.relationship_graph[individual1][relationship_type].add(individual2)
-
-    def _add_half_sibling_relationships(self):
-        """
-        Identify and add half-sibling relationships based on shared parents.
-        """
-        for family in self.families.values():
-            parents = family.get_parents()
-
-            # Iterate through each pair of parents to identify half-siblings
-            for i, parent1 in enumerate(parents):
-                for parent2 in parents[i + 1:]:
-                    shared_children = set(self.relationship_graph[parent1]["child"]).intersection(
-                        self.relationship_graph[parent2]["child"]
-                    )
-
-                    # Mark individuals as half-siblings
-                    for child1 in shared_children:
-                        for child2 in shared_children:
-                            if child1 != child2:
-                                self._add_relationship(child1, child2, "half-sibling")
-
-    def _inverse_relationship(self, relation_type: str) -> str:
-        """
-        Returns the inverse of a relationship type.
-        Example: 'parent' -> 'child', 'spouse' -> 'spouse'.
-        """
-        inverses = {
-            "parent": "child",
-            "child": "parent",
-            "grandparent": "grandchild",
-            "grandchild": "grandparent",
-            "step-parent": "step-child",
-            "step-child": "step-parent",
-            "spouse": "spouse",
-            "sibling": "sibling",
-            "half-sibling": "half-sibling",
-            "step-sibling": "step-sibling",
-        }
-        return inverses.get(relation_type, "unknown")
-
-    def get_relationship(self, subject_id: str, target_id: str) -> str:
-        """
-        Determine the relationship between two individuals.
-        Returns the relationship from the perspective of `subject_id`.
-        """
-        path = self._find_shortest_path(subject_id, target_id)
-        if not path:
-            return "No relationship found."
-        derived_from_path = self._derive_relationship_from_path(path, target_id)
-        if derived_from_path == "indirect relationship":
-            derived__from_cousinship = self.get_cousin_relationship(subject_id, target_id)
-            if derived__from_cousinship == "No cousin relationship found.":
-                return derived_from_path
-            else:
-                return derived__from_cousinship
-        else:
-            return derived_from_path
-
-    def _find_shortest_path(self, start: str, end: str) -> List[Tuple[str, str]]:
-        """
-        Perform BFS to find the shortest relationship path between two individuals.
-        Returns the path as a list of tuples (person_id, relationship).
-        """
-        queue = deque([(start, [])])
-        visited = set()
+        self.data.get_individual(individual)  # Check if individual exists
+        ancestors = {}
+        queue = [(individual, 0)]  # (current_individual, generation_distance)
 
         while queue:
-            current, path = queue.popleft()
-            if current == end:
-                return path
-            if current in visited:
+            current, distance = queue.pop(0)
+            if current in ancestors:
                 continue
-            visited.add(current)
-            for relationship, neighbors in self.relationship_graph[current].items():
-                for neighbor in neighbors:
-                    if neighbor not in visited:
-                        queue.append((neighbor, path + [(current, relationship)]))
+            ancestors[current] = distance
+            for parent in self.data.get_parents(current) or []:
+                queue.append((parent, distance + 1))
 
-        return []
+        return ancestors
 
-    def _derive_relationship_from_path(self, path: List[Tuple[str, str]], target_id: str) -> str:
+    def _find_closest_common_ancestor(self, reference_ancestors, related_to_ancestors):
         """
-        Derive the relationship type from the shortest path.
-        Adds sex-based specificity (e.g., 'father'/'mother') when possible.
+        Find the closest common ancestor given two ancestor mappings.
         """
-        if len(path) == 1:
-            base_relationship = path[0][1]
-            return self._specific_relationship(base_relationship, target_id)
+        if not reference_ancestors or not related_to_ancestors:
+            return None, None, None
+        common_ancestors = set(reference_ancestors.keys()) & set(related_to_ancestors.keys())
+        if not common_ancestors:
+            return None, None, None
 
-        relationships = [step[1] for step in path]
+        closest_common_ancestor = min(
+            common_ancestors, key=lambda x: reference_ancestors[x] + related_to_ancestors[x]
+        )
+        reference_distance = reference_ancestors[closest_common_ancestor]
+        related_to_distance = related_to_ancestors[closest_common_ancestor]
 
-        # Handle grandparent and other indirect relationships
-        if relationships == ["parent", "parent"]:
-            return self._specific_relationship("grandparent", target_id)
-        if relationships == ["child", "child"]:
-            return self._specific_relationship("grandchild", target_id)
+        return closest_common_ancestor, reference_distance, related_to_distance
 
-        # Fallback for unsupported paths
-        return "indirect relationship"
+    def calculate_cousinship(self, reference, related_to):
+        if reference is None or related_to is None:
+            return 'Invalid reference or related_to.'
 
-    def _specific_relationship(self, relationship: str, target_id: str) -> str:
-        """
-        Add sex-specific context to the relationship based on the target's sex.
-        """
-        if relationship in {"parent", "grandparent"}:
-            target_sex = self.individuals.get(target_id, {}).sex
-            if target_sex == "M":
-                return "father" if relationship == "parent" else "grandfather"
-            elif target_sex == "F":
-                return "mother" if relationship == "parent" else "grandmother"
+        # Get ancestors with generation distance
+        reference_ancestors = self._bfs_to_ancestors(reference)
+        related_to_ancestors = self._bfs_to_ancestors(related_to)
+
+        # Find closest common ancestor
+        closest_common_ancestor, reference_distance, related_to_distance = self._find_closest_common_ancestor(
+            reference_ancestors, related_to_ancestors
+        )
+
+        if not closest_common_ancestor:
+            return 'No relation'
+
+        degree = min(reference_distance, related_to_distance)
+        removed = abs(reference_distance - related_to_distance)
+
+        if removed == 0:
+            return f'{degree}th cousin'
+        return f'{degree}th cousin {removed} times removed'
+
+    def get_relationship(self, reference, related_to):
+        if reference is None or related_to is None:
+            raise ValueError('Missing reference or related_to ID.')
+        if reference == related_to:
+            raise ValueError('Reference and related_to IDs are the same.')
+        if not self.data.get_individual(reference) or not self.data.get_individual(related_to):
+            raise ValueError('Reference or related_to ID not found in data.')
+
+        edge_relationship = None
+        if self.relationship_graph.has_edge(reference, related_to):
+            edge_relationship = self.relationship_graph[reference][related_to]['relationship']
+            if edge_relationship == 'spouse':
+                return 'spouse'
+            if edge_relationship == 'parent-child':
+                if reference in self.data.get_parents(related_to):
+                    return 'parent'
+                elif reference in self.data.get_children(related_to):
+                    return 'child'
+                else:
+                    raise ValueError(f"Unsupported state: {edge_relationship} between {reference} and {related_to}")
+
+        if related_to in self.get_step_parents(reference):
+            return 'step-parent'
+        if related_to in self.get_half_siblings(reference):
+            return 'half-sibling'
+        elif related_to in self.get_step_siblings(reference):
+            return 'step-sibling'
+        elif edge_relationship == 'sibling':
+            return 'sibling'
+
+        # Cousinship
+        return self.calculate_cousinship(reference, related_to)
+
+    def display_relationship(self, reference, related_to):
+        relationship = self.get_relationship(reference, related_to)
+        if relationship == 'parent':
+            if self.data.get_husband(related_to) == reference:
+                return 'father'
+            elif self.data.get_wife(related_to) == reference:
+                return 'mother'
+        elif relationship == 'child':
+            if self.data.get_individual(reference).sex == 'M':
+                return 'son'
+            elif self.data.get_individual(reference).sex == 'F':
+                return 'daughter'
+            else:
+                return 'child'
+        elif relationship == 'spouse':
+            if self.data.get_husband(reference) == related_to:
+                return 'husband'
+            elif self.data.get_wife(reference) == related_to:
+                return 'wife'
+        elif relationship == 'sibling':
+            if self.data.get_individual(reference).sex == 'M':
+                return 'brother'
+            elif self.data.get_individual(reference).sex == 'F':
+                return 'sister'
+            else:
+                return 'sibling'
         return relationship
 
-    def get_cousin_relationship(self, person_a: str, person_b: str) -> str:
-        """
-        Calculate the cousinship between two individuals.
-        """
-        common_ancestor, distance_a, distance_b = self._find_common_ancestor(person_a, person_b)
-
-        if common_ancestor:
-            return self._determine_cousinship(distance_a, distance_b)
-        return "No cousin relationship found."
-
-    def _find_common_ancestor(self, person_a: str, person_b: str) -> Tuple[str, int, int]:
-        """
-        Find the most recent common ancestor and distances from it for two individuals.
-        Returns a tuple of (common_ancestor_id, distance_to_a, distance_to_b).
-        """
-        visited_a = self._bfs_ancestors(person_a)
-        visited_b = self._bfs_ancestors(person_b)
-
-        common_ancestors = set(visited_a.keys()).intersection(visited_b.keys())
-        if not common_ancestors:
-            return None, -1, -1
-
-        closest_ancestor = min(common_ancestors, key=lambda ancestor: visited_a[ancestor] + visited_b[ancestor])
-        return closest_ancestor, visited_a[closest_ancestor], visited_b[closest_ancestor]
-
-    def _bfs_ancestors(self, individual_id: str) -> Dict[str, int]:
-        """
-        Perform a breadth-first search (BFS) to find all ancestors of a given individual.
-        Returns a dictionary where keys are ancestor IDs and values are their respective distances from the given individual.
-        """
-        ancestors = defaultdict(int)
-        queue = deque([(individual_id, 0)])
-        visited = set()
-
-        while queue:
-            current_id, distance = queue.popleft()
-            if current_id in visited:
+    def validate_core_relationships(self):
+        # Validate that parent-child and sibling relationships are intact
+        for family_id, family in self.data.families.items():
+            if family is None:
                 continue
-            visited.add(current_id)
 
-            if current_id != individual_id:
-                ancestors[current_id] = distance
+            parents = [family.husband_id, family.wife_id]
+            parents = [p for p in parents if p is not None]
+            children = family.children if family.children else []
 
-            parents = self.data.get_parents(current_id)
+            # Check parent-child relationships
             for parent in parents:
-                if parent not in visited:
-                    queue.append((parent, distance + 1))
+                for child in children:
+                    assert self.relationship_graph.has_edge(parent, child)
+                    assert self.relationship_graph[parent][child]['relationship'] == 'parent-child'
 
-        return dict(ancestors)
-
-    def _determine_cousinship(self, distance_a: int, distance_b: int) -> str:
-        """
-        Calculate the cousinship and removal based on ancestor distances.
-        """
-        if distance_a == distance_b:
-            cousin_level = distance_a - 1
-            return f"{cousin_level}th cousin"
-        removal = abs(distance_a - distance_b)
-        cousin_level = min(distance_a, distance_b) - 1
-        return f"{cousin_level}th cousin {removal} times removed"
+            # Check sibling relationships
+            for i, child1 in enumerate(children):
+                for child2 in children[i + 1:]:
+                    assert self.relationship_graph.has_edge(child1, child2)
+                    assert self.relationship_graph[child1][child2]['relationship'] == 'sibling'
