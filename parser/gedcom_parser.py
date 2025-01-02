@@ -4,9 +4,9 @@ import datetime
 from typing import Dict, Set
 from ged4py.parser import GedcomReader
 
-from .individual import Individual
-from .family import Family
-from .util import normalize_id
+from kinship.individual import Individual
+from kinship.family import Family
+from kinship.util import normalize_id
 
 
 class GedcomParser:
@@ -27,7 +27,7 @@ class GedcomParser:
             for family in ged_parser.records0("FAM"):
                 fam = self.parse_family(family)
                 for child in self.families[fam.id].children:
-                    self.child_to_parents[child.id] = {fam.husband_id, fam.wife_id}
+                    self.child_to_parents[child] = {fam.husband_id, fam.wife_id}
 
     def parse_individual(self, individual):
         try:

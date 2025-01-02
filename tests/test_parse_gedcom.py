@@ -1,5 +1,5 @@
 import pytest
-from kinship.gedcom_parser import GedcomParser
+from parser.gedcom_parser import GedcomParser
 from kinship.individual import Individual
 from unittest.mock import MagicMock
 

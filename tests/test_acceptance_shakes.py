@@ -1,6 +1,6 @@
 import unittest
 
-from kinship.gedcom_parser import GedcomParser
+from parser.gedcom_parser import GedcomParser
 
 
 class TestShakespeareValidation(unittest.TestCase):

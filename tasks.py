@@ -11,15 +11,15 @@ def cov(c):
 
 @task(lint)
 def test(c):
-    c.run("pytest -v -rA --strict-config --html=results.html --self-contained-html")
+    c.run("pytest -v -ra --strict-config --html=results.html --self-contained-html")
 
 @task
 def parse(c, path):
-    c.run(f"python main.py parse {path}")
+    c.run(f"python command.py parse {path}")
 
 @task
 def load(c):
-    c.run("python main.py load")
+    c.run("python command.py load")
 
 @task
 def venv(c):

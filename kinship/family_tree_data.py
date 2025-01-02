@@ -1,6 +1,5 @@
 from kinship.individual import Individual
 from kinship.family import Family
-from kinship.gedcom_parser import GedcomParser
 
 
 class FamilyTreeData:
@@ -12,20 +11,12 @@ class FamilyTreeData:
         self.individuals = {}  # Dictionary of individual_id -> individual details
         self.families = {}  # Dictionary of family_id -> family details
 
-    def load_from_gedcom(self, gedcom_parser: GedcomParser):
-        """
-        Load data from a GEDCOM parser instance.
-        """
-        self.individuals = gedcom_parser.get_individuals()
-        self.families = gedcom_parser.get_families()
-        return self
-
     def load_from_processed_files(self, individuals_file, families_file):
         """
         Load data from pre-processed CSV files.
         """
-        self.individuals = self._load_csv(individuals_file, mode="hash_with_id")
-        self.families = self._load_csv(families_file, mode="hash_with_id")
+        self.load_individuals_from_csv(individuals_file)
+        self.load_families_from_csv(families_file)
         return self
 
     def _load_from_objs(self, individuals, families):
@@ -232,6 +223,6 @@ class FamilyTreeData:
 
         elif isinstance(content, Family):
             fam = content
-            result = f"Family: {fam.id}\n{self.display(fam.husband_id)} + {self.display(fam.wife_id)} M:{fam.marr_date}\n{[self.display(child_id) + " " for child_id in fam.children]}\n"
+            result = f"Family: {fam.id}\n{self.display(fam.husband_id)} + {self.display(fam.wife_id)} M:{fam.marr_date}\n{fam.children}\n"
 
         return result

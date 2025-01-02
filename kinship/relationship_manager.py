@@ -34,13 +34,13 @@ class RelationshipManager:
                 self.relationship_graph.add_edge(parents[0], parents[1], relationship='spouse')
 
     def _find_shared_parent(self, reference, related_to):
-        reference_parents = set(self.data.get_parents(reference) or [])
-        related_to_parents = set(self.data.get_parents(related_to) or [])
+        reference_parents = self.data.get_parents(reference) or {}
+        related_to_parents = self.data.get_parents(related_to) or {}
         return reference_parents.intersection(related_to_parents)
 
     def get_half_siblings(self, reference):
         half_siblings = []
-        reference_parents = set(self.data.get_parents(reference) or [])
+        reference_parents = self.data.get_parents(reference) or {}
         if not reference_parents:
             return half_siblings
 
@@ -52,7 +52,7 @@ class RelationshipManager:
 
     def get_step_siblings(self, reference):
         step_siblings = []
-        parents = self.data.get_parents(reference) or []
+        parents = self.data.get_parents(reference) or {}
         for parent in parents:
             for spouse in self.data.get_spouses(parent):
                 if not spouse:
@@ -64,15 +64,18 @@ class RelationshipManager:
                         step_siblings.append(child)
         return step_siblings
 
-    def get_step_parents(self, reference):
-        step_parents = []
-        parents = self.data.get_parents(reference) or []
-        for parent in parents:
-            for spouse in self.data.get_spouses(parent):
-                if not spouse:
-                    continue
-                if spouse not in parents:
-                    step_parents.append(spouse)
+    def get_step_parents(self, related_to):
+        bio_family = self.data.get_family(related_to)
+        bio_parents = self.data.get_parents(related_to) or {}
+        step_parents = set()
+        for family_id, family in self.data.families.items():
+            if family == bio_family:
+                continue
+            if any(parent in bio_parents for parent in family.get_parents()):
+                for parent in family.get_parents():
+                    if parent not in bio_parents:
+                        step_parents.add(parent)
+        step_parents.discard(bio_parents)
         return step_parents
 
     def _bfs_to_ancestors(self, individual):
@@ -155,7 +158,7 @@ class RelationshipManager:
                 else:
                     raise ValueError(f"Unsupported state: {edge_relationship} between {reference} and {related_to}")
 
-        if related_to in self.get_step_parents(reference):
+        if related_to in self.get_step_parents(related_to):
             return 'step-parent'
         if related_to in self.get_half_siblings(reference):
             return 'half-sibling'

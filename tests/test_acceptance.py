@@ -1,4 +1,4 @@
-from kinship.gedcom_parser import GedcomParser
+from parser.gedcom_parser import GedcomParser
 from unittest.mock import patch, mock_open
 
 

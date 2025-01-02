@@ -48,7 +48,7 @@ class TestRelationshipManagerMain(unittest.TestCase):
         self.assertEqual('brother', self.manager.display_relationship('I005', 'I006'))
         self.assertEqual('sister', self.manager.display_relationship('I006', 'I005'))
 
-    def test_sibling_relationships(self):
+    def test_sibling_relfationships(self):
         self.assertEqual('sibling', self.manager.display_relationship('I009', 'I008'))
 
     def test_half_sibling_relationships(self):
@@ -57,7 +57,7 @@ class TestRelationshipManagerMain(unittest.TestCase):
     def test_step_sibling_relationships(self):
         self.assertEqual('step-sibling', self.manager.display_relationship('I006', 'I008'))
 
-    @unittest.skip("Not implemented")
+    # @unittest.skip("Not implemented")
     def test_step_parent_relationships(self):
         self.assertEqual('step-parent', self.manager.display_relationship('I003', 'I005'))
         self.assertEqual('step-parent', self.manager.display_relationship('I002', 'I008'))

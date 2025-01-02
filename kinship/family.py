@@ -20,15 +20,15 @@ class Family:
         self.marr_date = date_string(marr_date)
         self.children = children if children else []
 
-    def get_parents(self) -> List[str]:
+    def get_parents(self) -> {str}:
         """
         Return a list of parent IDs (husband_id and wife_id).
         """
-        parents = []
+        parents = set()
         if self.husband_id:
-            parents.append(self.husband_id)
+            parents.add(self.husband_id)
         if self.wife_id:
-            parents.append(self.wife_id)
+            parents.add(self.wife_id)
         return parents
 
     def __str__(self):
