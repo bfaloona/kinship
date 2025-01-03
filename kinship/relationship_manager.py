@@ -15,9 +15,9 @@ class RelationshipManager:
             if family is None:
                 continue
 
-            parents = [family.husband_id, family.wife_id]
+            parents = [family['husband_id'], family['wife_id']]
             parents = [p for p in parents if p is not None]  # Filter out None values
-            children = family.children if family.children else []
+            children = family['children'] if family['children'] else []
 
             # Add parent-child relationships (undirected)
             for parent in parents:
@@ -204,9 +204,9 @@ class RelationshipManager:
             if family is None:
                 continue
 
-            parents = [family.husband_id, family.wife_id]
+            parents = [family['husband_id'], family['wife_id']]
             parents = [p for p in parents if p is not None]
-            children = family.children if family.children else []
+            children = family['children'] if family['children'] else []
 
             # Check parent-child relationships
             for parent in parents:

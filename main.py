@@ -1,6 +1,10 @@
 from kinship.family_tree_data import FamilyTreeData
 from kinship.relationship_manager import RelationshipManager
-from kinship.chart import visualize_family_tree
+from chart import visualize_family_tree
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+
 
 def load_and_visualize():
     """Load CSV files and visualize the family tree."""

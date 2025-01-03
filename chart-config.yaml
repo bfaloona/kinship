@@ -1,0 +1,49 @@
+visual:
+  node_colors:
+    Male: "blue"
+    Female: "red"
+    Unknown: "black"
+  line_styles:
+    spouse:
+      color: "gray"
+      width: 2
+      style: "solid"
+    sibling:
+      color: "black"
+      width: 1
+      style: "solid"
+    parent:
+      color: "green"
+      width: 1
+      style: "dashed"
+  spacing:
+    horizontal: 3
+    vertical: 2
+  labels:
+    wrap: true
+    font_size: 8
+  title: "Family Tree Visualization"
+
+layout:
+  generational_band:
+    enabled: true
+  nuclear_family_triangle:
+    enabled: true
+  sibling_adjacency:
+    enabled: true
+  spouse_adjacency:
+    enabled: true
+overlap:
+  adjustment:
+    vertical: true
+    max_adjustment: 1
+output:
+  path: "family_tree.png"
+  size:
+    width: 12
+    height: 8
+spacing_weights:
+  spouse: 0
+  sibling: 2
+  parent: 5
+  unrelated: 10

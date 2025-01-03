@@ -7,6 +7,7 @@ class FamilyTreeData:
     A robust class for managing family tree data with support for loading, querying, and testing.
     The data is read-only to ensure the source of truth (e.g., GEDCOM file) is preserved.
     """
+
     def __init__(self):
         self.individuals = {}  # Dictionary of individual_id -> individual details
         self.families = {}  # Dictionary of family_id -> family details
@@ -19,14 +20,6 @@ class FamilyTreeData:
         self.load_families_from_csv(families_file)
         return self
 
-    def _load_from_objs(self, individuals, families):
-        """
-        Load data from pre-processed CSV files.
-        """
-        self.individuals = individuals
-        self.families = families
-        return self
-
     def load_families_from_csv(self, file_path):
         import csv
 
@@ -35,31 +28,47 @@ class FamilyTreeData:
             for row in reader:
                 family_id = row['Family_ID']
                 if family_id not in self.families:
-                    self.families[family_id] = Family(
-                        id=row['Family_ID'],
-                        husband_id=row['Husband_ID'],
-                        husband_name=row['Husband_Name'],
-                        wife_id=row['Wife_ID'],
-                        wife_name=row['Wife_Name'],
-                        marr_date=row['Marriage_Date']
-                    )
-                self.families[family_id].children.append(row['Child_ID'])
+                    self.families[family_id] = {
+                        'husband_id': row['Husband_ID'],
+                        'wife_id': row['Wife_ID'],
+                        'children': []
+                    }
+                self.families[family_id]['children'].append(row['Child_ID'])
 
     def load_individuals_from_csv(self, file_path):
         import csv
         with open(file_path, 'r') as file:
             reader = csv.DictReader(file)
             for row in reader:
-                individual_id = row['Individual_ID']
-                self.individuals[individual_id] = Individual(
-                    id=row['Individual_ID'],
-                    full_name=row['Individual_Name'],
-                    sex=row['Sex'],
-                    birth_date=row['Birth_Date'],
-                    birth_place=row['Birth_Place'],
-                    death_date=row['Death_Date'],
-                    death_place=row['Death_Place']
-                )
+                self.individuals[row['Individual_ID']] = {
+                    'name': row['Individual_Name'],
+                    'sex': row['Sex'],
+                    'birth_date': row['Birth_Date'],
+                    'birth_place': row['Birth_Place'],
+                    'death_date': row['Death_Date'],
+                    'death_place': row['Death_Place']
+                }
+
+    def calculate_generations(self):
+        generations = {}
+
+        # Initialize generations for individuals without parents
+        for individual_id in self.individuals:
+            generations[individual_id] = 0
+
+        updated = True
+        while updated:
+            updated = False
+            for family in self.families.values():
+                for child_id in family['children']:
+                    for parent_id in [family['husband_id'], family['wife_id']]:
+                        if parent_id and parent_id in generations:
+                            new_gen = generations[parent_id] + 1
+                            if child_id not in generations or generations[child_id] < new_gen:
+                                generations[child_id] = new_gen
+                                updated = True
+
+        return generations
 
     def get_individual(self, individual_id) -> Individual:
         """
