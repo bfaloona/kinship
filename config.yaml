@@ -17,8 +17,8 @@ visual:
       width: 1
       style: "dashed"
   spacing:
-    horizontal: 3
-    vertical: 2
+    horizontal: 20
+    vertical: 8
   labels:
     wrap: true
     font_size: 8
@@ -40,10 +40,10 @@ overlap:
 output:
   path: "family_tree.png"
   size:
-    width: 12
-    height: 8
+    width: 24
+    height: 16
 spacing_weights:
-  spouse: 0
-  sibling: 2
-  parent: 5
-  unrelated: 10
+  spouse: 10
+  sibling: 20
+  parent: 30
+  unrelated: 50
