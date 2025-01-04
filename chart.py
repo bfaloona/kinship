@@ -142,7 +142,7 @@ def main():
     from kinship.relationship_manager import RelationshipManager
 
     family_tree = FamilyTreeData()
-    family_tree.load_from_processed_files("data/shakes/individuals.csv", "data/shakes/families.csv")
+    family_tree.load_from_processed_files("data/surname-one/individuals.csv", "data/surname-one/families.csv")
     manager = RelationshipManager(family_tree)
 
     # Use the relationship_graph from RelationshipManager

@@ -1,5 +1,6 @@
 from kinship.individual import Individual
 from kinship.family import Family
+from typing import Set
 
 
 class FamilyTreeData:
@@ -8,8 +9,8 @@ class FamilyTreeData:
     The data is read-only to ensure the source of truth (e.g., GEDCOM file) is preserved.
     """
     def __init__(self):
-        self.individuals = {}  # Dictionary of individual_id -> individual details
-        self.families = {}  # Dictionary of family_id -> family details
+        self.individuals = {}  # Dictionary of individual_id -> individual object
+        self.families = {}  # Dictionary of family_id -> family object
 
     def load_from_processed_files(self, individuals_file, families_file):
         """
@@ -116,7 +117,7 @@ class FamilyTreeData:
                 spouses.append(family.husband_id)
         return spouses
 
-    def get_parents(self, individual_id) -> set:
+    def get_parent_ids(self, individual_id) -> Set[str]:
         """
         Retrieve IDs of parents.
         """
@@ -174,10 +175,10 @@ class FamilyTreeData:
         """
         all_siblings = set()
         all_families = set()
-        parents = self.get_parents(individual_id)
+        parents = self.get_parent_ids(individual_id)
         for family in self.families.values():
             for parent in parents:
-                if parent in family.get_parents():
+                if parent in family.get_parent_ids():
                     all_families.add(family)
         for family in all_families:
             all_siblings.update(family.children)

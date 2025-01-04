@@ -143,6 +143,11 @@ if __name__ == "__main__":
                     name2 = "Hamnet" # brother
                     name3 = "Edward" # half-brother
                     name4 = "Annette" # step-sister
+                elif "Reference PaternalOne" in [ind.full_name for ind in data.individuals.values()]:
+                    name1 = "Reference"  #
+                    name2 = "FatherInLaw SpouseSurnameOne"  # brother
+                    name3 = "HalfSister"  # half-brother
+                    name4 = "Grandmother MaternalThree"  # step-sister
                 else:
                     # Collect two names from the user
                     name1 = input("Enter the first individual's name: ")
@@ -183,14 +188,17 @@ if __name__ == "__main__":
 
                 if ind1 and ind2:
                     # Display the relationship between two individuals
-                    relationship = rm.display_relationship(id1, id2)
+                    relationship = rm.display_relationship(id2, id1)
                     print(f"\nRelationship between {ind1.full_name} and {ind2.full_name}: {relationship}")
                 if ind1 and ind3:
-                    relationship = rm.display_relationship(id1, id3)
+                    relationship = rm.display_relationship(id3, id1)
                     print(f"\nRelationship between {ind1.full_name} and {ind3.full_name}: {relationship}")
                 if ind1 and ind4:
-                    relationship = rm.display_relationship(id1, id4)
+                    relationship = rm.display_relationship(id4, id1)
                     print(f"\nRelationship between {ind1.full_name} and {ind4.full_name}: {relationship}")
+                if ind2 and ind4:
+                    relationship = rm.display_relationship(id4, id2)
+                    print(f"\nRelationship between {ind2.full_name} and {ind4.full_name}: {relationship}")
 
             except Exception as e:
                 print(f"Error analyzing family tree data: {e}")

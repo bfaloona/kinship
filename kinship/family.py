@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Set
 from .util import normalize_id, date_string
 
 class Family:
@@ -20,7 +20,7 @@ class Family:
         self.marr_date = date_string(marr_date)
         self.children = children if children else []
 
-    def get_parents(self) -> {str}:
+    def get_parent_ids(self) -> Set[str]:
         """
         Return a list of parent IDs (husband_id and wife_id).
         """

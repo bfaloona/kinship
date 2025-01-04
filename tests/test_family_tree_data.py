@@ -56,7 +56,7 @@ def test_get_siblings(mock_family_tree_data):
     assert siblings == {'I4'}
 
 def test_get_parents(mock_family_tree_data):
-    parents = mock_family_tree_data.get_parents('I3')
+    parents = mock_family_tree_data.get_parent_ids('I3')
     assert parents == {'I1', 'I2'}
 
 def test_verify_integrity(mock_family_tree_data):

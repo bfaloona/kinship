@@ -53,13 +53,13 @@ class RelationshipManager:
         return colors.get(sex, "black")
 
     def _find_shared_parent(self, reference, related_to):
-        reference_parents = self.data.get_parents(reference) or {}
-        related_to_parents = self.data.get_parents(related_to) or {}
+        reference_parents = self.data.get_parent_ids(reference) or {}
+        related_to_parents = self.data.get_parent_ids(related_to) or {}
         return reference_parents.intersection(related_to_parents)
 
     def get_half_siblings(self, reference):
         half_siblings = []
-        reference_parents = self.data.get_parents(reference) or {}
+        reference_parents = self.data.get_parent_ids(reference) or {}
         if not reference_parents:
             return half_siblings
 
@@ -71,7 +71,7 @@ class RelationshipManager:
 
     def get_step_siblings(self, reference):
         step_siblings = []
-        parents = self.data.get_parents(reference) or {}
+        parents = self.data.get_parent_ids(reference) or {}
         for parent in parents:
             for spouse in self.data.get_spouses(parent):
                 if not spouse:
@@ -83,19 +83,20 @@ class RelationshipManager:
                         step_siblings.append(child)
         return step_siblings
 
-    def get_step_parents(self, related_to):
-        bio_family = self.data.get_family(related_to)
-        bio_parents = self.data.get_parents(related_to) or {}
-        step_parents = set()
+    def get_step_parents(self, related_to_id):
+        bio_family = self.data.get_family(related_to_id)
+        bio_parent_ids = self.data.get_parent_ids(related_to_id) or set()
+        step_parent_ids = set()
         for family_id, family in self.data.families.items():
             if family == bio_family:
                 continue
-            if any(parent in bio_parents for parent in family.get_parents()):
-                for parent in family.get_parents():
-                    if parent not in bio_parents:
-                        step_parents.add(parent)
-        step_parents.discard(bio_parents)
-        return step_parents
+            if any(id in bio_parent_ids for id in family.get_parent_ids()):
+                for parent_id in family.get_parent_ids():
+                    if parent_id not in bio_parent_ids:
+                        step_parent_ids.add(parent_id)
+        # step_parent_ids.difference_update(bio_parent_ids.keys())
+        step_parent_ids.discard(bio_parent_ids)
+        return step_parent_ids
 
     def _bfs_to_ancestors(self, individual):
         """
@@ -110,7 +111,7 @@ class RelationshipManager:
             if current in ancestors:
                 continue
             ancestors[current] = distance
-            for parent in self.data.get_parents(current) or []:
+            for parent in self.data.get_parent_ids(current) or []:
                 queue.append((parent, distance + 1))
 
         return ancestors
@@ -170,7 +171,7 @@ class RelationshipManager:
             if edge_relationship == 'spouse':
                 return 'spouse'
             if edge_relationship == 'parent-child':
-                if reference in self.data.get_parents(related_to):
+                if reference in self.data.get_parent_ids(related_to):
                     return 'parent'
                 elif reference in self.data.get_children(related_to):
                     return 'child'
@@ -204,15 +205,17 @@ class RelationshipManager:
             else:
                 return 'child'
         elif relationship == 'spouse':
-            if self.data.get_husband(reference) == related_to:
-                return 'husband'
-            elif self.data.get_wife(reference) == related_to:
-                return 'wife'
-        elif relationship == 'sibling':
             if self.data.get_individual(reference).sex == 'M':
-                return 'brother'
+                return 'husband'
+            elif self.data.get_wife(reference).sex == 'F':
+                return 'wife'
+            else:
+                return 'spouse'
+        elif relationship.endswith('sibling'):
+            if self.data.get_individual(reference).sex == 'M':
+                return relationship.replace('sibling','brother')
             elif self.data.get_individual(reference).sex == 'F':
-                return 'sister'
+                return relationship.replace('sibling', 'sister')
             else:
                 return 'sibling'
         return relationship
