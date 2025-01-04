@@ -18,8 +18,8 @@ def parse(c, path):
     c.run(f"python command.py parse {path}")
 
 @task
-def load(c):
-    c.run("python command.py load")
+def load(c, path):
+    c.run(f"python command.py load {path}")
 
 @task
 def venv(c):

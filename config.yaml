@@ -1,8 +1,8 @@
 visual:
   node_colors:
-    Male: "blue"
-    Female: "red"
-    Unknown: "black"
+    M: "blue"
+    F: "red"
+    U: "black"
   line_styles:
     spouse:
       color: "gray"
@@ -10,9 +10,9 @@ visual:
       style: "solid"
     sibling:
       color: "black"
-      width: 1
+      width: 0
       style: "solid"
-    parent:
+    parent-child:
       color: "green"
       width: 1
       style: "dashed"
@@ -43,7 +43,6 @@ output:
     width: 24
     height: 16
 spacing_weights:
-  spouse: 10
+  spouse: 2
   sibling: 20
-  parent: 30
-  unrelated: 50
+  parent-child: 30

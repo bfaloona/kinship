@@ -16,10 +16,10 @@ if __name__ == "__main__":
         command = sys.argv[1]
 
     try:
+        file_path = os.path.join(sys.argv[2])
         if command == "parse":
             from parser.gedcom_parser import GedcomParser
 
-            file_path = os.path.join(sys.argv[2])
             parser = GedcomParser(file_path)
             parser.parse_gedcom_file()
             data = FamilyTreeData()
@@ -31,9 +31,8 @@ if __name__ == "__main__":
 
         elif command == "load":
             data = FamilyTreeData()
-            data.load_individuals_from_csv(os.path.join(sys.argv[2], "individuals.csv"))
-            data.load_families_from_csv(os.path.join(sys.argv[2], "families.csv"))
-            # TODO Add simplest validation here
+            data.load_individuals_from_csv(os.path.join(file_path, "individuals.csv"))
+            data.load_families_from_csv(os.path.join(file_path, "families.csv"))
             print("Data loaded from processed files successfully!")
 
             session = SessionContext({key: ind.full_name for key, ind in data.individuals.items()})

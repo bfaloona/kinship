@@ -1,12 +1,27 @@
 import yaml
 import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
+
 from kinship.family_tree_data import FamilyTreeData
 
 # Load YAML Configuration
 def load_config(path="config.yaml"):
     with open(path, "r") as file:
         return yaml.safe_load(file)
+
+# Helper for curved edges
+def draw_curved_edge(ax, pos, node1, node2, curvature=0.2, color="gray", linewidth=2):
+    start = np.array(pos[node1])
+    end = np.array(pos[node2])
+    mid = (start + end) / 2
+    offset = curvature * np.array([-1 * (end[1] - start[1]), end[0] - start[0]])
+    control = mid + offset
+    bezier = np.linspace(0, 1, 100)
+    curve = (1 - bezier)[:, None]**2 * start + \
+            2 * (1 - bezier)[:, None] * bezier[:, None] * control + \
+            bezier[:, None]**2 * end
+    ax.plot(curve[:, 0], curve[:, 1], color=color, linewidth=linewidth)
 
 
 # Layout Nodes Based on Configuration and Generational Rules
@@ -40,8 +55,50 @@ def layout_graph(graph, family_tree, config):
     return pos
 
 
+def layout_graph2(graph, family_tree, config):
+    # Initialize positions
+    pos = {}
+    generation_nodes = {}
+    child_counts = {}  # Track number of children for each node
+
+    # Group nodes by generation
+    generations = family_tree.calculate_generations()
+    for node, generation in generations.items():
+        generation_nodes.setdefault(generation, []).append(node)
+        child_counts[node] = len(family_tree.get_children(node))
+
+    y_spacing = config["visual"]["spacing"]["vertical"]
+    x_spacing = config["visual"]["spacing"]["horizontal"]
+
+    # Place nodes generation by generation
+    for gen, nodes in sorted(generation_nodes.items()):
+        x_offset = 0
+        for node in nodes:
+            # Handle spouses
+            spouses = family_tree.get_spouses(node)
+            if spouses:
+                for spouse in spouses:
+                    if spouse in pos:  # Skip already positioned spouses
+                        continue
+                    pos[node] = (x_offset, -gen * y_spacing)
+                    pos[spouse] = (x_offset + x_spacing, -gen * y_spacing)
+                    x_offset += 2 * x_spacing
+            elif node not in pos:  # Place individual nodes
+                pos[node] = (x_offset, -gen * y_spacing)
+                x_offset += x_spacing
+
+        # Adjust spacing based on child counts
+        for node in nodes:
+            children = family_tree.get_children(node)
+            if children:
+                child_x_start = pos[node][0] - (len(children) - 1) * x_spacing / 2
+                for i, child in enumerate(children):
+                    pos[child] = (child_x_start + i * x_spacing, -(gen + 1) * y_spacing)
+
+    return pos
+
 def render_graph(graph, pos, config):
-    plt.figure(figsize=(
+    fig, ax = plt.subplots(figsize=(
         config["output"]["size"]["width"],
         config["output"]["size"]["height"]
     ))
@@ -51,12 +108,15 @@ def render_graph(graph, pos, config):
         if edge[0] in pos and edge[1] in pos:  # Validate node positions
             relationship = edge[2].get("relationship")
             style = config["visual"]["line_styles"].get(relationship, {})
-            nx.draw_networkx_edges(
-                graph, pos, edgelist=[(edge[0], edge[1])],
-                edge_color=style.get("color", "black"),
-                style=style.get("style", "solid"),
-                width=style.get("width", 1)
-            )
+            if relationship == "sibling":
+                draw_curved_edge(ax, pos, edge[0], edge[1], curvature=0.2)
+            else:
+                nx.draw_networkx_edges(
+                    graph, pos, edgelist=[(edge[0], edge[1])],
+                    edge_color=style.get("color", "gray"),
+                    style=style.get("style", "solid"),
+                    width=style.get("width", 0.5)
+                )
 
     # Draw nodes
     node_colors = [graph.nodes[node]['color'] for node in graph.nodes()]
@@ -93,7 +153,7 @@ def main():
     graph = graph.subgraph(valid_nodes).copy()  # Retain only valid nodes
 
     # Generate layout and render the graph
-    pos = layout_graph(graph, family_tree, config)
+    pos = layout_graph2(graph, family_tree, config)
     render_graph(graph, pos, config)
 
 
